@@ -1,9 +1,8 @@
-package main
+package radarr
 
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -46,6 +45,7 @@ type getRootFolder []struct {
 	Path string `json:"path"`
 }
 
+// Fetches the rootfolder path set in Radarr
 func (r *rdrr) getRootFolder() (getRootFolder, error) {
 	_, body, err := r.performReq("GET", "/rootfolder", nil)
 	if err != nil {
@@ -56,7 +56,6 @@ func (r *rdrr) getRootFolder() (getRootFolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(rf)
 	return rf, nil
 
 }
@@ -67,6 +66,7 @@ type getQualityProfile []struct {
 	Name string `json:"name"`
 }
 
+// Fetches the quality profiles
 func (r *rdrr) getQualityProfile() (getQualityProfile, error) {
 	_, body, err := r.performReq("GET", "/qualityprofile", nil)
 	if err != nil {
@@ -77,7 +77,6 @@ func (r *rdrr) getQualityProfile() (getQualityProfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(qp)
 	return qp, nil
 
 }
@@ -93,16 +92,20 @@ type addMoviePayload struct {
 	} `json:"addOptions"`
 }
 
-func (r *rdrr) addMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) (bool, error) {
+// Add the movie to Radarr
+func (r *rdrr) addMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) error {
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
 		SearchForMovie bool "json:\"searchForMovie\""
 	}{SearchForMovie: searchForMovie}}
-	data, _ := json.Marshal(payload)
-	_, _, err := r.performReq("POST", "/movie", data)
+	data, err := json.Marshal(payload)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	_, _, err = r.performReq("POST", "/movie", data)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func Initrdrr(apikey string, hostpath string) (*rdrr, error) {
