@@ -3,6 +3,7 @@ package radarr
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -33,7 +34,10 @@ func (r *rdrr) performReq(method string, endpoint string, data []byte) (*http.Re
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	if err != nil || (resp.StatusCode < 200 && resp.StatusCode >= 300) {
+		if err == nil {
+			err = errors.New(string(body))
+		}
 		return nil, nil, err
 	}
 	return resp, body, nil
@@ -41,12 +45,11 @@ func (r *rdrr) performReq(method string, endpoint string, data []byte) (*http.Re
 
 // getRootFolder Response struct
 type getRootFolder []struct {
-	Id   int    `json:"id"`
 	Path string `json:"path"`
 }
 
 // Fetches the rootfolder path set in Radarr
-func (r *rdrr) getRootFolder() (getRootFolder, error) {
+func (r *rdrr) GetRootFolder() (getRootFolder, error) {
 	_, body, err := r.performReq("GET", "/rootfolder", nil)
 	if err != nil {
 		return nil, err
@@ -61,18 +64,18 @@ func (r *rdrr) getRootFolder() (getRootFolder, error) {
 }
 
 // getQualityProfile Response struct
-type getQualityProfile []struct {
+type qualityProfile []struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
 
 // Fetches the quality profiles
-func (r *rdrr) getQualityProfile() (getQualityProfile, error) {
+func (r *rdrr) GetQualityProfiles() (qualityProfile, error) {
 	_, body, err := r.performReq("GET", "/qualityprofile", nil)
 	if err != nil {
 		return nil, err
 	}
-	var qp getQualityProfile
+	var qp qualityProfile
 	err = parseJson(body, &qp)
 	if err != nil {
 		return nil, err
@@ -93,7 +96,7 @@ type addMoviePayload struct {
 }
 
 // Add the movie to Radarr
-func (r *rdrr) addMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) error {
+func (r *rdrr) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) error {
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
 		SearchForMovie bool "json:\"searchForMovie\""
 	}{SearchForMovie: searchForMovie}}
@@ -108,10 +111,10 @@ func (r *rdrr) addMovie(title string, qualityProfileId int, tmdbId int, rootFold
 	return nil
 }
 
-func Initrdrr(apikey string, hostpath string) (*rdrr, error) {
+func Initrdrr(apikey string, hostpath string) *rdrr {
 	r := &rdrr{hostpath: hostpath}
 	r.req, _ = http.NewRequest("", "", nil)
 	r.req.Header.Add("X-Api-Key", apikey)
 	r.req.Header.Add("Content-Type", "application/json")
-	return r, nil
+	return r
 }
