@@ -55,34 +55,41 @@ type updateDownloadStatus struct {
 				Color string `json:"color"`
 			} `json:"select"`
 		} `json:"Download Status"`
+		QualityProfile struct {
+			Select struct {
+				Name string `json:"name"`
+			} `json:"select"`
+		} `json:"Quality Profile,omitempty"`
+		RootFolder struct {
+			Select struct {
+				Name string `json:"name"`
+			} `json:"select"`
+		} `json:"Root Folder,omitempty"`
 		// Dprogress struct {
 		// 	Number float64 `json:"number"`
 		// } `json:"Download Progress"`
 	} `json:"properties"`
 }
 
+type statusMap struct {
+	name  string
+	color string
+}
+
+var sMap = map[string]statusMap{
+	"Error":       {name: "🔴 Error", color: "red"},
+	"Downloaded":  {name: "🟢 Downloaded", color: "green"},
+	"Downloading": {name: "🔵 Downloading", color: "blue"},
+	"Queued":      {name: "🟡 Queued", color: "yellow"},
+}
+
 // updateDownloadStatus function updates the "Download Status" prop
 //
 // id - page id to update
 //
-// status - "Not started" or "In progress" or "Done"
+// status - "Queued" , "Downloading" , "Downloaded" or "Error"
 func (n *NotionClient) UpdateDownloadStatus(id string, status string) error {
-	UpdateDownloadStatus := updateDownloadStatus{struct {
-		DStatus struct {
-			Select struct {
-				Name  string `json:"name"`
-				Color string `json:"color"`
-			} `json:"select"`
-		} `json:"Download Status"`
-	}{DStatus: struct {
-		Select struct {
-			Name  string `json:"name"`
-			Color string `json:"color"`
-		} `json:"select"`
-	}{Select: struct {
-		Name  string `json:"name"`
-		Color string `json:"color"`
-	}{Name: status, Color: "grey"}}}}
+	UpdateDownloadStatus := updateDownloadStatus{}
 
 	data, err := json.Marshal(UpdateDownloadStatus)
 	if err != nil {
@@ -112,7 +119,12 @@ type queryDB struct {
 				Select struct {
 					Name string `json:"name"`
 				} `json:"select"`
-			} `json:"Quality Profile"`
+			} `json:"Quality Profile,omitempty"`
+			RootFolder struct {
+				Select struct {
+					Name string `json:"name"`
+				} `json:"select,omitempty"`
+			} `json:"Root Folder"`
 		} `json:"properties"`
 	} `json:"results"`
 }
@@ -233,17 +245,31 @@ type addDBPropertiesPayload struct {
 				// } `json:"options"`
 			} `json:"select"`
 		} `json:"Download Status,omitempty"`
+		RootFolder struct {
+			Type   string `json:"type"`
+			Select struct {
+				Options []struct {
+					Name string `json:"name"`
+				} `json:"options"`
+			} `json:"select"`
+		} `json:"Root Folder,omitempty"`
 	} `json:"properties"`
 }
 
 // addQualityProfiles() adds the properties ( Download, Download Status, Quality Profile ) to the DB.
 //
 // profiles : Radarr/Sonarr quality profiles to add
-func (n *NotionClient) AddDBProperties(profiles []string) error {
+func (n *NotionClient) AddDBProperties(profiles []string, rootpaths []string) error {
 	payload := addDBPropertiesPayload{}
 	payload.Properties.QualityProfile.Type = "select"
-	for _, v := range profiles {
+	for _, u := range profiles {
 		payload.Properties.QualityProfile.Select.Options = append(payload.Properties.QualityProfile.Select.Options, struct {
+			Name string `json:"name"`
+		}{Name: u})
+	}
+	payload.Properties.RootFolder.Type = "select"
+	for _, v := range rootpaths {
+		payload.Properties.RootFolder.Select.Options = append(payload.Properties.RootFolder.Select.Options, struct {
 			Name string `json:"name"`
 		}{Name: v})
 	}

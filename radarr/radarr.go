@@ -9,7 +9,7 @@ import (
 	"net/url"
 )
 
-type rdrr struct {
+type RadarrClient struct {
 	req      *http.Request
 	hostpath string
 }
@@ -18,7 +18,7 @@ func parseJson(body []byte, target interface{}) error {
 	return json.Unmarshal(body, target)
 }
 
-func (r *rdrr) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
+func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
 	r.req.Method = method
 	r.req.URL, _ = url.Parse(r.hostpath + "/api/v3" + endpoint)
 	if method == "POST" {
@@ -49,7 +49,7 @@ type getRootFolder []struct {
 }
 
 // Fetches the rootfolder path set in Radarr
-func (r *rdrr) GetRootFolder() (getRootFolder, error) {
+func (r *RadarrClient) GetRootFolder() (getRootFolder, error) {
 	_, body, err := r.performReq("GET", "/rootfolder", nil)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ type qualityProfile []struct {
 }
 
 // Fetches the quality profiles
-func (r *rdrr) GetQualityProfiles() (qualityProfile, error) {
+func (r *RadarrClient) GetQualityProfiles() (qualityProfile, error) {
 	_, body, err := r.performReq("GET", "/qualityprofile", nil)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ type addMoviePayload struct {
 }
 
 // Add the movie to Radarr
-func (r *rdrr) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) error {
+func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) error {
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
 		SearchForMovie bool "json:\"searchForMovie\""
 	}{SearchForMovie: searchForMovie}}
@@ -111,8 +111,8 @@ func (r *rdrr) AddMovie(title string, qualityProfileId int, tmdbId int, rootFold
 	return nil
 }
 
-func Initrdrr(apikey string, hostpath string) *rdrr {
-	r := &rdrr{hostpath: hostpath}
+func InitRadarrClient(apikey string, hostpath string) *RadarrClient {
+	r := &RadarrClient{hostpath: hostpath}
 	r.req, _ = http.NewRequest("", "", nil)
 	r.req.Header.Add("X-Api-Key", apikey)
 	r.req.Header.Add("Content-Type", "application/json")
