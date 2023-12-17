@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -13,9 +15,19 @@ import (
 var exit = make(chan bool)
 
 func main() {
-	err := godotenv.Load()
+	// init log file
+	f, err := os.OpenFile("notionSyncLogFile.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+	// setup logging
+	logger := slog.New(slog.NewTextHandler(f, nil))
+	// load env (temp)
+	err = godotenv.Load()
+	if err != nil {
+		logger.Error("Error loading .env file")
+		os.Exit(1)
 	}
 	R := radarr.InitRadarrClient(os.Getenv("RDRRKEY"), os.Getenv("RADARRHOST"))
 	N := notion.InitNotionClient("Emad", os.Getenv("RDRRNOTIONINTEG"), os.Getenv("DBID"))
@@ -27,7 +39,7 @@ func main() {
 	// Radarr root path
 	radarrRootPaths, err := R.GetRootFolder()
 	if len(radarrRootPaths) == 0 || err != nil {
-		log.Println("Failed to fetch Radarr root path", err)
+		logger.Warn("Failed to fetch Radarr root path", err)
 		radarrSucc = false
 	} else {
 		for _, r := range radarrRootPaths {
@@ -41,42 +53,43 @@ func main() {
 	// Radarr quality profile
 	radarrQualityProfiles, err := R.GetQualityProfiles()
 	if len(radarrQualityProfiles) == 0 || err != nil {
-		log.Println("Failed to fetch Radarr quality profiles", err)
+		logger.Error("Failed to fetch Radarr quality profiles", err)
 		radarrSucc = false
 	} else {
 		for _, v := range radarrQualityProfiles {
 			qps = append(qps, "Movie: "+v.Name)
 			qpid["Movie: "+v.Name] = v.Id
 		}
-		log.Println("Quality profiles fetched:", qps)
+		logger.Info("Quality profiles fetched")
 	}
 	if !radarrSucc {
-		log.Fatalln("Failed to fetch quality profiles & rootpaths from Radarr")
+		logger.Error("Failed to fetch quality profiles & rootpaths from Radarr")
+	} else {
+		// Add properties to the DB
+		err = N.AddDBProperties(qps, rps)
+		if err != nil {
+			logger.Error("Failed to add properties to DB", err)
+			os.Exit(1)
+		}
+		logger.Info("Database updated with new properties")
 	}
-	// Add properties to the DB
-	err = N.AddDBProperties(qps, rps)
-	if err != nil {
-		log.Fatalln("Failed to add properties to DB", err)
-	}
-	log.Println("Database updated with new properties")
 	if radarrSucc {
-		go rdrr(R, N, qpid, rpid, radarrRootPaths[0].Path, radarrQualityProfiles[0].Id)
+		go rdrr(R, N, qpid, rpid, radarrRootPaths[0].Path, radarrQualityProfiles[0].Id, logger)
 	}
 	<-exit
-	log.Fatalln("Shutting down due to termination of Radarr subroutine")
+	logger.Error("Shutting down due to termination of Radarr subroutine")
+	os.Exit(1)
 }
 
-func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, rpid map[string]string, defaultRootPath string, defaultQualityProfile int) {
+func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, rpid map[string]string, defaultRootPath string, defaultQualityProfile int, logger *slog.Logger) {
 
 	for {
+		logger.Info("Radarr: Fetching titles")
 		data, err := N.QueryDB("Movie")
 		if err != nil {
-			log.Println("Radarr: Failed to query watchlist DB", err)
-			exit <- true
+			logger.Error("Radarr: ", "Failed to query watchlist DB", err)
 		}
-		log.Println("Fetched titles from DB:", len(data.Results))
-		log.Println(defaultRootPath)
-		log.Println(defaultQualityProfile)
+		logger.Info(fmt.Sprintf("Radarr: Fetched titles from DB: %d", len(data.Results)))
 		var rp string
 		var qp int
 		for _, v := range data.Results {
@@ -90,16 +103,16 @@ func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, r
 			} else {
 				qp = qpid[v.Properties.QualityProfile.Select.Name]
 			}
+			logger.Info("Radarr: ", "Adding Title ", v.Properties.Name.Title[0].Plain_text)
 			err = R.AddMovie(v.Properties.Name.Title[0].Plain_text, qp, v.Properties.Tmdbid.Number, rp, true, true)
 			if err != nil {
-				log.Println("Error adding title:", v.Properties.Name.Title[0].Plain_text, err)
+				logger.Error("Radarr: ", "Error adding title:", v.Properties.Name.Title[0].Plain_text, err)
 				N.UpdateDownloadStatus(v.Pgid, "Error")
 				continue
 			}
-			log.Println("Added title:", v.Properties.Name.Title[0].Plain_text)
+			logger.Info(fmt.Sprintf("Radarr: Added title: %s", v.Properties.Name.Title[0].Plain_text))
 			N.UpdateDownloadStatus(v.Pgid, "Queued")
 		}
-		time.Sleep(3 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
-
 }
