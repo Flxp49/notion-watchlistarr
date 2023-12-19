@@ -37,7 +37,7 @@ func (n *NotionClient) performReq(method string, endpoint string, data []byte) (
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
-	if err != nil || (resp.StatusCode < 200 && resp.StatusCode >= 300) {
+	if err != nil || (resp.StatusCode < 200 || resp.StatusCode >= 300) {
 		if err == nil {
 			err = errors.New(string(body))
 		}
@@ -55,19 +55,16 @@ type updateDownloadStatus struct {
 				Color string `json:"color"`
 			} `json:"select"`
 		} `json:"Download Status"`
-		QualityProfile struct {
+		QualityProfile *struct {
 			Select struct {
 				Name string `json:"name"`
 			} `json:"select"`
 		} `json:"Quality Profile,omitempty"`
-		RootFolder struct {
+		RootFolder *struct {
 			Select struct {
 				Name string `json:"name"`
 			} `json:"select"`
 		} `json:"Root Folder,omitempty"`
-		// Dprogress struct {
-		// 	Number float64 `json:"number"`
-		// } `json:"Download Progress"`
 	} `json:"properties"`
 }
 
@@ -78,8 +75,8 @@ type statusMap struct {
 
 var sMap = map[string]statusMap{
 	"Error":       {name: "🔴 Error", color: "red"},
-	"Downloaded":  {name: "🟢 Downloaded", color: "green"},
-	"Downloading": {name: "🔵 Downloading", color: "blue"},
+	"Downloaded":  {name: "🟢 Downloading", color: "green"},
+	"Downloading": {name: "🔵 Downloaded", color: "blue"},
 	"Queued":      {name: "🟡 Queued", color: "yellow"},
 }
 
@@ -88,10 +85,43 @@ var sMap = map[string]statusMap{
 // id - page id to update
 //
 // status - "Queued" , "Downloading" , "Downloaded" or "Error"
-func (n *NotionClient) UpdateDownloadStatus(id string, status string) error {
-	UpdateDownloadStatus := updateDownloadStatus{}
-
-	data, err := json.Marshal(UpdateDownloadStatus)
+func (n *NotionClient) UpdateDownloadStatus(id string, status string, qualityProfile string, rootPath string) error {
+	payload := updateDownloadStatus{}
+	if status != "Error" {
+		payload.Properties = struct {
+			DStatus struct {
+				Select struct {
+					Name  string "json:\"name\""
+					Color string "json:\"color\""
+				} "json:\"select\""
+			} "json:\"Download Status\""
+			QualityProfile *struct {
+				Select struct {
+					Name string "json:\"name\""
+				} "json:\"select\""
+			} "json:\"Quality Profile,omitempty\""
+			RootFolder *struct {
+				Select struct {
+					Name string "json:\"name\""
+				} "json:\"select\""
+			} "json:\"Root Folder,omitempty\""
+		}{QualityProfile: &struct {
+			Select struct {
+				Name string "json:\"name\""
+			} "json:\"select\""
+		}{Select: struct {
+			Name string "json:\"name\""
+		}{Name: qualityProfile}}, RootFolder: &struct {
+			Select struct {
+				Name string "json:\"name\""
+			} "json:\"select\""
+		}{struct {
+			Name string "json:\"name\""
+		}{Name: rootPath}}}
+	}
+	payload.Properties.DStatus.Select.Name = sMap[status].name
+	payload.Properties.DStatus.Select.Color = sMap[status].color
+	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
@@ -240,9 +270,6 @@ type addDBPropertiesPayload struct {
 		DownloadStatus struct {
 			Type   string `json:"type"`
 			Select struct {
-				// Options []struct {
-				// 	Name string `json:"name"`
-				// } `json:"options"`
 			} `json:"select"`
 		} `json:"Download Status,omitempty"`
 		RootFolder struct {

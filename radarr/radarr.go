@@ -34,7 +34,7 @@ func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
-	if err != nil || (resp.StatusCode < 200 && resp.StatusCode >= 300) {
+	if err != nil || (resp.StatusCode < 200 || resp.StatusCode >= 300) {
 		if err == nil {
 			err = errors.New(string(body))
 		}
@@ -100,6 +100,7 @@ func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, 
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
 		SearchForMovie bool "json:\"searchForMovie\""
 	}{SearchForMovie: searchForMovie}}
+
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err

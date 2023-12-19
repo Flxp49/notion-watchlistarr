@@ -29,8 +29,13 @@ func main() {
 		logger.Error("Error loading .env file")
 		os.Exit(1)
 	}
-	R := radarr.InitRadarrClient(os.Getenv("RDRRKEY"), os.Getenv("RADARRHOST"))
-	N := notion.InitNotionClient("Emad", os.Getenv("RDRRNOTIONINTEG"), os.Getenv("DBID"))
+	R := radarr.InitRadarrClient(os.Getenv("RADARRKEY"), os.Getenv("RADARRHOST"))
+	N := notion.InitNotionClient("Emad", os.Getenv("NOTIONINTEG"), os.Getenv("DBID"))
+
+	// Defaults
+	radarrDefaultRootPath := "Movie: " + os.Getenv("RADARRDEFAULTROOTPATH")
+	radarrDefaultQualityProfile := "Movie: " + os.Getenv("RADARRDEFAULTQUALITYPROFILE")
+
 	radarrSucc := true
 
 	// Root Paths
@@ -62,6 +67,7 @@ func main() {
 		}
 		logger.Info("Quality profiles fetched")
 	}
+
 	if !radarrSucc {
 		logger.Error("Failed to fetch quality profiles & rootpaths from Radarr")
 	} else {
@@ -74,14 +80,14 @@ func main() {
 		logger.Info("Database updated with new properties")
 	}
 	if radarrSucc {
-		go rdrr(R, N, qpid, rpid, radarrRootPaths[0].Path, radarrQualityProfiles[0].Id, logger)
+		go rdrr(R, N, qpid, rpid, radarrDefaultRootPath, radarrDefaultQualityProfile, logger)
 	}
 	<-exit
 	logger.Error("Shutting down due to termination of Radarr subroutine")
 	os.Exit(1)
 }
 
-func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, rpid map[string]string, defaultRootPath string, defaultQualityProfile int, logger *slog.Logger) {
+func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, rpid map[string]string, defaultRootPath string, defaultQualityProfile string, logger *slog.Logger) {
 
 	for {
 		logger.Info("Radarr: Fetching titles")
@@ -90,28 +96,22 @@ func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, r
 			logger.Error("Radarr: ", "Failed to query watchlist DB", err)
 		}
 		logger.Info(fmt.Sprintf("Radarr: Fetched titles from DB: %d", len(data.Results)))
-		var rp string
-		var qp int
 		for _, v := range data.Results {
 			if v.Properties.RootFolder.Select.Name == "" {
-				rp = defaultRootPath
-			} else {
-				rp = rpid[v.Properties.RootFolder.Select.Name]
+				v.Properties.RootFolder.Select.Name = defaultRootPath
 			}
 			if v.Properties.QualityProfile.Select.Name == "" {
-				qp = defaultQualityProfile
-			} else {
-				qp = qpid[v.Properties.QualityProfile.Select.Name]
+				v.Properties.QualityProfile.Select.Name = defaultQualityProfile
 			}
-			logger.Info("Radarr: ", "Adding Title ", v.Properties.Name.Title[0].Plain_text)
-			err = R.AddMovie(v.Properties.Name.Title[0].Plain_text, qp, v.Properties.Tmdbid.Number, rp, true, true)
+			logger.Info(fmt.Sprintf("Radarr: Adding Title: %s", v.Properties.Name.Title[0].Plain_text))
+			err = R.AddMovie(v.Properties.Name.Title[0].Plain_text, qpid[v.Properties.QualityProfile.Select.Name], v.Properties.Tmdbid.Number, rpid[v.Properties.RootFolder.Select.Name], true, true)
 			if err != nil {
-				logger.Error("Radarr: ", "Error adding title:", v.Properties.Name.Title[0].Plain_text, err)
-				N.UpdateDownloadStatus(v.Pgid, "Error")
+				logger.Error(fmt.Sprintf("Radarr: Error adding title: %s", v.Properties.Name.Title[0].Plain_text), err)
+				N.UpdateDownloadStatus(v.Pgid, "Error", "", "")
 				continue
 			}
+			N.UpdateDownloadStatus(v.Pgid, "Queued", v.Properties.QualityProfile.Select.Name, v.Properties.RootFolder.Select.Name)
 			logger.Info(fmt.Sprintf("Radarr: Added title: %s", v.Properties.Name.Title[0].Plain_text))
-			N.UpdateDownloadStatus(v.Pgid, "Queued")
 		}
 		time.Sleep(5 * time.Second)
 	}
