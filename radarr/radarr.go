@@ -10,8 +10,10 @@ import (
 )
 
 type RadarrClient struct {
-	req      *http.Request
-	hostpath string
+	req                   *http.Request
+	hostpath              string
+	DefaultRootPath       string
+	DefaultQualityProfile string
 }
 
 func parseJson(body []byte, target interface{}) error {
@@ -112,8 +114,8 @@ func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, 
 	return nil
 }
 
-func InitRadarrClient(apikey string, hostpath string) *RadarrClient {
-	r := &RadarrClient{hostpath: hostpath}
+func InitRadarrClient(apikey string, hostpath string, defaultRootPath string, defaultQualityProfile string) *RadarrClient {
+	r := &RadarrClient{hostpath: hostpath, DefaultRootPath: defaultRootPath, DefaultQualityProfile: "Movie: " + defaultQualityProfile}
 	r.req, _ = http.NewRequest("", "", nil)
 	r.req.Header.Add("X-Api-Key", apikey)
 	r.req.Header.Add("Content-Type", "application/json")
