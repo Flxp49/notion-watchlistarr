@@ -46,81 +46,68 @@ func main() {
 		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
-	// setup logging
 	logger = slog.New(slog.NewTextHandler(f, nil))
-	// load env (temp)
+
 	err = godotenv.Load()
 	if err != nil {
 		logger.Error("Error loading .env file")
 		os.Exit(1)
 	}
-	// R = radarr.InitRadarrClient(os.Getenv("RADARRKEY"), os.Getenv("RADARRHOST"))
-	// N = notion.InitNotionClient("Emad", os.Getenv("NOTIONINTEG"), os.Getenv("DBID"))
 
-	// // Defaults
-	// radarrDefaultRootPath := "Movie: " + os.Getenv("RADARRDEFAULTROOTPATH")
-	// radarrDefaultQualityProfile := "Movie: " + os.Getenv("RADARRDEFAULTQUALITYPROFILE")
+	// R = radarr.InitRadarrClient(os.Getenv("RADARR_KEY"), os.Getenv("RADARR_HOST") )
+	// N = notion.InitNotionClient("Emad", os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
 
-	// radarrSucc := true
+	// To manage Root Paths and Quality Profiles and update Notion DB with it.
+	rpid := make(map[string]string)
+	qpid := make(map[string]int)
+	// set flag for radarr routine
+	radarrStart := true
 
-	// // Root Paths
-	// var rps []string
-	// rpid := make(map[string]string)
-	// // Radarr root path
-	// radarrRootPaths, err := R.GetRootFolder()
-	// if len(radarrRootPaths) == 0 || err != nil {
-	// 	logger.Warn("Failed to fetch Radarr root path", err)
-	// 	radarrSucc = false
-	// } else {
-	// 	for _, r := range radarrRootPaths {
-	// 		rps = append(rps, "Movie: "+r.Path)
-	// 		rpid["Movie: "+r.Path] = r.Path
-	// 	}
-	// }
-	// // Quality Profiles
-	// var qps []string
-	// qpid := make(map[string]int)
-	// // Radarr quality profile
-	// radarrQualityProfiles, err := R.GetQualityProfiles()
-	// if len(radarrQualityProfiles) == 0 || err != nil {
-	// 	logger.Error("Failed to fetch Radarr quality profiles", err)
-	// 	radarrSucc = false
-	// } else {
-	// 	for _, v := range radarrQualityProfiles {
-	// 		qps = append(qps, "Movie: "+v.Name)
-	// 		qpid["Movie: "+v.Name] = v.Id
-	// 	}
-	// 	logger.Info("Quality profiles fetched")
-	// }
-
-	// if !radarrSucc {
-	// 	logger.Error("Failed to fetch quality profiles & rootpaths from Radarr")
-	// } else {
-	// 	// Add properties to the DB
-	// 	err = N.AddDBProperties(qps, rps)
-	// 	if err != nil {
-	// 		logger.Error("Failed to add properties to DB", err)
-	// 		os.Exit(1)
-	// 	}
-	// 	logger.Info("Database updated with new properties")
-	// }
-	// if radarrSucc {
-	// 	go rdrr(R, N, qpid, rpid, radarrDefaultRootPath, radarrDefaultQualityProfile, logger)
-	// }
-
-	http.HandleFunc("/radarr", radarrHandler)
-	PORT := os.Getenv("PORT")
-	if PORT == "" {
-		logger.Error("PORT not specified")
-		os.Exit(1)
+	// Fetch Radarr & Sonarr info
+	radarrDefaultRootPath := ""
+	radarrDefaultQualityProfile := ""
+	if os.Getenv("RADARR_DEFAULT_ROOT_PATH") != "" {
+		radarrDefaultRootPath = "Movie: " + os.Getenv("RADARR_DEFAULT_ROOT_PATH")
 	}
-	err = http.ListenAndServe(":"+PORT, nil)
-	if errors.Is(err, http.ErrServerClosed) {
-		logger.Info("Server closed")
-	} else if err != nil {
-		logger.Error(fmt.Sprintf("Failed to listen on PORT %s", PORT), "error", err)
-		os.Exit(1)
+	if os.Getenv("RADARR_DEFAULT_QUALITY_PROFILE") != "" {
+		radarrDefaultQualityProfile = "Movie: " + os.Getenv("RADARR_DEFAULT_QUALITY_PROFILE")
 	}
+
+	err = getRadarrInfo(qpid, rpid, radarrDefaultRootPath, radarrDefaultQualityProfile)
+	if err != nil {
+		logger.Error("Error fetching Radarr details, Radarr routine not initialized", "Error", err)
+		radarrStart = false
+	}
+
+	//todo: same as the above for sonarr
+
+	// if radarrStart {
+	// Add properties to the DB
+	// err = N.AddDBProperties(qps, rps)
+	// if err != nil {
+	// logger.Error("Failed to add properties to DB", err)
+	// os.Exit(1)
+	// }
+	// logger.Info("Database updated with new properties")
+	// }
+
+	// if radarrStart {
+	// go rdrr(R, N, qpid, rpid, radarrDefaultRootPath, radarrDefaultQualityProfile, logger)
+	// }
+
+	// http.HandleFunc("/radarr", radarrHandler)
+	// PORT := os.Getenv("PORT")
+	// if PORT == "" {
+	// 	logger.Error("PORT not specified")
+	// 	os.Exit(1)
+	// }
+	// err = http.ListenAndServe(":"+PORT, nil)
+	// if errors.Is(err, http.ErrServerClosed) {
+	// 	logger.Info("Server closed")
+	// } else if err != nil {
+	// 	logger.Error(fmt.Sprintf("Failed to listen on PORT %s", PORT), "error", err)
+	// 	os.Exit(1)
+	// }
 }
 
 func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, rpid map[string]string, logger *slog.Logger) {
@@ -151,4 +138,37 @@ func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, r
 		}
 		time.Sleep(5 * time.Second)
 	}
+}
+
+func getRadarrInfo(qpid map[string]int, rpid map[string]string, radarrDefaultRootPath string, radarrDefaultQualityProfile string) error {
+	radarrRootPaths, err := R.GetRootFolder()
+	if len(radarrRootPaths) == 0 || err != nil {
+		logger.Error("Failed to fetch Radarr root path", "error", err)
+		return errors.New("RADARR ROOT PATH ERROR")
+	} else {
+		for _, r := range radarrRootPaths {
+			rpid["Movie: "+r.Path] = r.Path
+		}
+		if radarrDefaultRootPath == "" {
+			R.DefaultRootPath = "Movie: " + radarrRootPaths[0].Path
+		} else {
+			R.DefaultRootPath = "Movie: " + radarrDefaultRootPath
+		}
+	}
+	// Quality Profiles
+	radarrQualityProfiles, err := R.GetQualityProfiles()
+	if len(radarrQualityProfiles) == 0 || err != nil {
+		logger.Error("Failed to fetch Radarr quality profiles", "error", err)
+		return errors.New("RADARR QUALITY PATH ERROR")
+	} else {
+		for _, v := range radarrQualityProfiles {
+			qpid["Movie: "+v.Name] = v.Id
+		}
+		if radarrDefaultQualityProfile == "" {
+			R.DefaultQualityProfile = "Movie: " + radarrQualityProfiles[0].Name
+		} else {
+			R.DefaultQualityProfile = "Movie: " + radarrDefaultQualityProfile
+		}
+	}
+	return nil
 }

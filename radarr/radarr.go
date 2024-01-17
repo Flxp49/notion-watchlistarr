@@ -114,8 +114,8 @@ func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, 
 	return nil
 }
 
-func InitRadarrClient(apikey string, hostpath string, defaultRootPath string, defaultQualityProfile string) *RadarrClient {
-	r := &RadarrClient{hostpath: hostpath, DefaultRootPath: defaultRootPath, DefaultQualityProfile: "Movie: " + defaultQualityProfile}
+func InitRadarrClient(apikey string, hostpath string) *RadarrClient {
+	r := &RadarrClient{hostpath: hostpath}
 	r.req, _ = http.NewRequest("", "", nil)
 	r.req.Header.Add("X-Api-Key", apikey)
 	r.req.Header.Add("Content-Type", "application/json")
