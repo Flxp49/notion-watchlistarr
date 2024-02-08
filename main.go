@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net/http"
@@ -18,25 +20,49 @@ var logger *slog.Logger
 var N *notion.NotionClient
 var R *radarr.RadarrClient
 
+func parseJson(body []byte, target interface{}) error {
+	return json.Unmarshal(body, target)
+}
+
 // eventType: "MovieAdded"
 type MovieInfo struct {
 	Movie struct {
-		id     int
-		tmdbId int
+		Id     int `json:"id"`
+		TmdbId int `json:"tmdbId"`
 	} `json:"movie"`
-	EventType string `json:"eventType"`
+	EventType    string `json:"eventType"`
+	DeletedFiles bool   `json:"deletedFiles"` //only present when EventType: "MovieDelete"
 }
 
 func radarrHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		// body, _ := io.ReadAll(r.Body)
-		// var data MovieInfo
-		// err := parseJson(body, &data)
-		// logger.Error("Error reading body", "body", body, "error", err)
-
-	} else {
+	if r.Method != "POST" {
 		w.WriteHeader(405)
+		return
 	}
+	body, _ := io.ReadAll(r.Body)
+	r.Body.Close()
+	var movieData MovieInfo
+	err := parseJson(body, &movieData)
+	if err != nil {
+		w.WriteHeader(400)
+		logger.Error("Error reading body", "body", body, "error", err)
+		return
+	}
+	w.WriteHeader(200)
+	logger.Info("radarr post request", "data", movieData)
+	switch movieData.EventType {
+	case "MovieAdded":
+		//handle movie
+	case "Grab":
+		//handle
+	case "Download":
+		//handle
+	case "MovieDelete":
+		//handle
+	default:
+		logger.Error("radarr post request error", "error", "EventType missing in payload")
+	}
+
 }
 
 func main() {
@@ -54,12 +80,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	// R = radarr.InitRadarrClient(os.Getenv("RADARR_KEY"), os.Getenv("RADARR_HOST") )
-	// N = notion.InitNotionClient("Emad", os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
+	R = radarr.InitRadarrClient(os.Getenv("RADARR_KEY"), os.Getenv("RADARR_HOST"))
+	N = notion.InitNotionClient("Emad", os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
 
 	// To manage Root Paths and Quality Profiles and update Notion DB with it.
 	rpid := make(map[string]string)
 	qpid := make(map[string]int)
+	// monitor := make(map[string]int)
 	// set flag for radarr routine
 	radarrStart := true
 
@@ -78,45 +105,49 @@ func main() {
 		logger.Error("Error fetching Radarr details, Radarr routine not initialized", "Error", err)
 		radarrStart = false
 	}
-
 	//todo: same as the above for sonarr
 
-	// if radarrStart {
-	// Add properties to the DB
-	// err = N.AddDBProperties(qps, rps)
-	// if err != nil {
-	// logger.Error("Failed to add properties to DB", err)
-	// os.Exit(1)
-	// }
-	// logger.Info("Database updated with new properties")
-	// }
+	if radarrStart { // || sonarrStart
+		// Add properties to the DB
+		err = N.AddDBProperties(qpid, rpid)
+		if err != nil {
+			logger.Error("Failed to add properties to DB", "Error", err)
+			os.Exit(1)
+		}
+		logger.Info("Database updated with new properties")
 
-	// if radarrStart {
-	// go rdrr(R, N, qpid, rpid, radarrDefaultRootPath, radarrDefaultQualityProfile, logger)
-	// }
+		if radarrStart {
+			go rdrr(qpid, rpid)
+		}
+		// same for sonarr
+		// if sonarrStart {
+		// go snrr(qpid, rpid)
+		// }
+	}
 
-	// http.HandleFunc("/radarr", radarrHandler)
-	// PORT := os.Getenv("PORT")
-	// if PORT == "" {
-	// 	logger.Error("PORT not specified")
-	// 	os.Exit(1)
-	// }
-	// err = http.ListenAndServe(":"+PORT, nil)
-	// if errors.Is(err, http.ErrServerClosed) {
-	// 	logger.Info("Server closed")
-	// } else if err != nil {
-	// 	logger.Error(fmt.Sprintf("Failed to listen on PORT %s", PORT), "error", err)
-	// 	os.Exit(1)
-	// }
+	http.HandleFunc("/radarr", radarrHandler)
+	PORT := os.Getenv("PORT")
+	if PORT == "" {
+		logger.Error("PORT not specified")
+		os.Exit(1)
+	}
+	err = http.ListenAndServe(":"+PORT, nil)
+	if errors.Is(err, http.ErrServerClosed) {
+		logger.Info("Server closed")
+	} else if err != nil {
+		logger.Error(fmt.Sprintf("Failed to listen on PORT %s", PORT), "error", err)
+		os.Exit(1)
+	}
 }
 
-func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, rpid map[string]string, logger *slog.Logger) {
+func rdrr(qpid map[string]int, rpid map[string]string) {
 
 	for {
 		logger.Info("Radarr: Fetching titles")
 		data, err := N.QueryDB("Movie")
 		if err != nil {
 			logger.Error("Radarr: ", "Failed to query watchlist DB", err)
+			continue
 		}
 		logger.Info(fmt.Sprintf("Radarr: Fetched titles from DB: %d", len(data.Results)))
 		for _, v := range data.Results {
@@ -136,39 +167,40 @@ func rdrr(R *radarr.RadarrClient, N *notion.NotionClient, qpid map[string]int, r
 			N.UpdateDownloadStatus(v.Pgid, "Queued", v.Properties.QualityProfile.Select.Name, v.Properties.RootFolder.Select.Name)
 			logger.Info(fmt.Sprintf("Radarr: Added title: %s", v.Properties.Name.Title[0].Plain_text))
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
 func getRadarrInfo(qpid map[string]int, rpid map[string]string, radarrDefaultRootPath string, radarrDefaultQualityProfile string) error {
+	// Root path
 	radarrRootPaths, err := R.GetRootFolder()
 	if len(radarrRootPaths) == 0 || err != nil {
 		logger.Error("Failed to fetch Radarr root path", "error", err)
 		return errors.New("RADARR ROOT PATH ERROR")
+	}
+
+	for _, r := range radarrRootPaths {
+		rpid["Movie: "+r.Path] = r.Path
+	}
+	if radarrDefaultRootPath == "" {
+		R.DefaultRootPath = "Movie: " + radarrRootPaths[0].Path
 	} else {
-		for _, r := range radarrRootPaths {
-			rpid["Movie: "+r.Path] = r.Path
-		}
-		if radarrDefaultRootPath == "" {
-			R.DefaultRootPath = "Movie: " + radarrRootPaths[0].Path
-		} else {
-			R.DefaultRootPath = "Movie: " + radarrDefaultRootPath
-		}
+		R.DefaultRootPath = "Movie: " + radarrDefaultRootPath
 	}
 	// Quality Profiles
 	radarrQualityProfiles, err := R.GetQualityProfiles()
 	if len(radarrQualityProfiles) == 0 || err != nil {
 		logger.Error("Failed to fetch Radarr quality profiles", "error", err)
 		return errors.New("RADARR QUALITY PATH ERROR")
+	}
+
+	for _, v := range radarrQualityProfiles {
+		qpid["Movie: "+v.Name] = v.Id
+	}
+	if radarrDefaultQualityProfile == "" {
+		R.DefaultQualityProfile = "Movie: " + radarrQualityProfiles[0].Name
 	} else {
-		for _, v := range radarrQualityProfiles {
-			qpid["Movie: "+v.Name] = v.Id
-		}
-		if radarrDefaultQualityProfile == "" {
-			R.DefaultQualityProfile = "Movie: " + radarrQualityProfiles[0].Name
-		} else {
-			R.DefaultQualityProfile = "Movie: " + radarrDefaultQualityProfile
-		}
+		R.DefaultQualityProfile = "Movie: " + radarrDefaultQualityProfile
 	}
 	return nil
 }

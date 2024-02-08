@@ -93,15 +93,17 @@ type addMoviePayload struct {
 	RootFolderPath   string `json:"rootFolderPath"`
 	Monitored        bool   `json:"monitored"`
 	AddOptions       struct {
-		SearchForMovie bool `json:"searchForMovie"`
+		SearchForMovie bool   `json:"searchForMovie"`
+		Monitor        string `json:"monitor"`
 	} `json:"addOptions"`
 }
 
 // Add the movie to Radarr
 func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) error {
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
-		SearchForMovie bool "json:\"searchForMovie\""
-	}{SearchForMovie: searchForMovie}}
+		SearchForMovie bool   `json:"searchForMovie"`
+		Monitor        string `json:"monitor"`
+	}{}}
 
 	data, err := json.Marshal(payload)
 	if err != nil {

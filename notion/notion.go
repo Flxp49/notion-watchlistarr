@@ -286,19 +286,19 @@ type addDBPropertiesPayload struct {
 // addQualityProfiles() adds the properties ( Download, Download Status, Quality Profile ) to the DB.
 //
 // profiles : Radarr/Sonarr quality profiles to add
-func (n *NotionClient) AddDBProperties(profiles []string, rootpaths []string) error {
+func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]string) error {
 	payload := addDBPropertiesPayload{}
 	payload.Properties.QualityProfile.Type = "select"
-	for _, u := range profiles {
+	for profile := range qpid {
 		payload.Properties.QualityProfile.Select.Options = append(payload.Properties.QualityProfile.Select.Options, struct {
 			Name string `json:"name"`
-		}{Name: u})
+		}{Name: profile})
 	}
 	payload.Properties.RootFolder.Type = "select"
-	for _, v := range rootpaths {
+	for path := range rpid {
 		payload.Properties.RootFolder.Select.Options = append(payload.Properties.RootFolder.Select.Options, struct {
 			Name string `json:"name"`
-		}{Name: v})
+		}{Name: path})
 	}
 	payload.Properties.Download.Type = "checkbox"
 	payload.Properties.DownloadStatus.Type = "select"
