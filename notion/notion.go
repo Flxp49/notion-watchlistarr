@@ -49,22 +49,25 @@ func (n *NotionClient) performReq(method string, endpoint string, data []byte) (
 // Payload struct for UpdateDownloadStatus
 type updateDownloadStatus struct {
 	Properties struct {
+		Download struct {
+			Checkbox bool `json:"checkbox"`
+		}
 		DStatus struct {
 			Select struct {
-				Name  string `json:"name"`
-				Color string `json:"color"`
+				Name string `json:"name"`
+				// Color string `json:"color"`
 			} `json:"select"`
 		} `json:"Download Status"`
-		QualityProfile *struct {
-			Select struct {
+		QualityProfile struct {
+			Select *struct {
 				Name string `json:"name"`
 			} `json:"select"`
-		} `json:"Quality Profile,omitempty"`
-		RootFolder *struct {
-			Select struct {
+		} `json:"Quality Profile"`
+		RootFolder struct {
+			Select *struct {
 				Name string `json:"name"`
 			} `json:"select"`
-		} `json:"Root Folder,omitempty"`
+		} `json:"Root Folder"`
 	} `json:"properties"`
 }
 
@@ -74,53 +77,45 @@ type statusMap struct {
 }
 
 var sMap = map[string]statusMap{
-	"Error":       {name: "🔴 Error", color: "red"},
-	"Downloaded":  {name: "🟢 Downloading", color: "green"},
-	"Downloading": {name: "🔵 Downloaded", color: "blue"},
-	"Queued":      {name: "🟡 Queued", color: "yellow"},
+	"Error":          {name: "🔴 Error", color: "red"},
+	"Not Downloaded": {name: "⚫ Not Downloaded", color: "gray"},
+	"Downloading":    {name: "🟢 Downloading", color: "green"},
+	"Downloaded":     {name: "🔵 Downloaded", color: "blue"},
+	"Queued":         {name: "🟡 Queued", color: "yellow"},
 }
 
 // updateDownloadStatus function updates the "Download Status" prop
 //
 // id - page id to update
 //
+// download - true || false for checkbox property
+//
 // status - "Queued" , "Downloading" , "Downloaded" or "Error"
-func (n *NotionClient) UpdateDownloadStatus(id string, status string, qualityProfile string, rootPath string) error {
+func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status string, qualityProfile string, rootPath string) error {
 	payload := updateDownloadStatus{}
-	if status != "Error" {
-		payload.Properties = struct {
-			DStatus struct {
-				Select struct {
-					Name  string "json:\"name\""
-					Color string "json:\"color\""
-				} "json:\"select\""
-			} "json:\"Download Status\""
-			QualityProfile *struct {
-				Select struct {
-					Name string "json:\"name\""
-				} "json:\"select\""
-			} "json:\"Quality Profile,omitempty\""
-			RootFolder *struct {
-				Select struct {
-					Name string "json:\"name\""
-				} "json:\"select\""
-			} "json:\"Root Folder,omitempty\""
-		}{QualityProfile: &struct {
-			Select struct {
+	if status != "Error" && status != "Not Downloaded" {
+		payload.Properties.Download.Checkbox = true
+		payload.Properties.DStatus.Select.Name = sMap[status].name
+
+		payload.Properties.QualityProfile = struct {
+			Select *struct {
 				Name string "json:\"name\""
 			} "json:\"select\""
-		}{Select: struct {
+		}{Select: &struct {
 			Name string "json:\"name\""
-		}{Name: qualityProfile}}, RootFolder: &struct {
-			Select struct {
+		}{Name: qualityProfile}}
+
+		payload.Properties.RootFolder = struct {
+			Select *struct {
 				Name string "json:\"name\""
 			} "json:\"select\""
-		}{struct {
+		}{Select: &struct {
 			Name string "json:\"name\""
-		}{Name: rootPath}}}
+		}{Name: rootPath}}
+	} else {
+		payload.Properties.Download.Checkbox = false
+		payload.Properties.DStatus.Select.Name = sMap[status].name
 	}
-	payload.Properties.DStatus.Select.Name = sMap[status].name
-	payload.Properties.DStatus.Select.Color = sMap[status].color
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -253,6 +248,58 @@ func (n *NotionClient) QueryDB(mtype string) (queryDB, error) {
 	return qDB, nil
 }
 
+// QueryDBTmdb Response struct
+type queryDBTmdb struct {
+	Results []struct {
+		Pgid string `json:"id"`
+		// Properties struct {
+		// 	Tmdbid struct {
+		// 		Number int `json:"number"`
+		// 	} `json:"ID"`
+		// 	Name struct {
+		// 		Title []struct {
+		// 			Plain_text string `json:"plain_text"`
+		// 		} `json:"title"`
+		// 	}
+		// } `json:"properties"`
+	} `json:"results"`
+}
+
+// QueryDBTmdb payload
+type QueryDBTmdbPayload struct {
+	Filter struct {
+		Property string `json:"property"`
+		Number   struct {
+			Equals int `json:"equals"`
+		} `json:"number"`
+	} `json:"filter"`
+}
+
+// Query DB for existing titles by TmdbID
+//
+// id : tmdbid
+func (n *NotionClient) QueryDBTmdb(id int) (queryDBTmdb, error) {
+	payload := QueryDBTmdbPayload{struct {
+		Property string `json:"property"`
+		Number   struct {
+			Equals int `json:"equals"`
+		} `json:"number"`
+	}{Property: "ID", Number: struct {
+		Equals int `json:"equals"`
+	}{Equals: id}}}
+	data, _ := json.Marshal(payload)
+	_, body, err := n.performReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
+	if err != nil {
+		return queryDBTmdb{}, err
+	}
+	var qDBT queryDBTmdb
+	err = parseJson(body, &qDBT)
+	if err != nil {
+		return queryDBTmdb{}, err
+	}
+	return qDBT, nil
+}
+
 type addDBPropertiesPayload struct {
 	Properties struct {
 		QualityProfile struct {
@@ -270,6 +317,10 @@ type addDBPropertiesPayload struct {
 		DownloadStatus struct {
 			Type   string `json:"type"`
 			Select struct {
+				Options []struct {
+					Name  string `json:"name"`
+					Color string `json:"color"`
+				} `json:"options"`
 			} `json:"select"`
 		} `json:"Download Status,omitempty"`
 		RootFolder struct {
@@ -299,6 +350,12 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 		payload.Properties.RootFolder.Select.Options = append(payload.Properties.RootFolder.Select.Options, struct {
 			Name string `json:"name"`
 		}{Name: path})
+	}
+	for _, val := range sMap {
+		payload.Properties.DownloadStatus.Select.Options = append(payload.Properties.DownloadStatus.Select.Options, struct {
+			Name  string "json:\"name\""
+			Color string "json:\"color\""
+		}{Name: val.name, Color: val.color})
 	}
 	payload.Properties.Download.Type = "checkbox"
 	payload.Properties.DownloadStatus.Type = "select"

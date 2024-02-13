@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -46,17 +47,17 @@ func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (
 }
 
 // getRootFolder Response struct
-type getRootFolder []struct {
+type getRootFolderResponse []struct {
 	Path string `json:"path"`
 }
 
 // Fetches the rootfolder path set in Radarr
-func (r *RadarrClient) GetRootFolder() (getRootFolder, error) {
+func (r *RadarrClient) GetRootFolder() (getRootFolderResponse, error) {
 	_, body, err := r.performReq("GET", "/rootfolder", nil)
 	if err != nil {
 		return nil, err
 	}
-	var rf getRootFolder
+	var rf getRootFolderResponse
 	err = parseJson(body, &rf)
 	if err != nil {
 		return nil, err
@@ -65,19 +66,19 @@ func (r *RadarrClient) GetRootFolder() (getRootFolder, error) {
 
 }
 
-// getQualityProfile Response struct
-type qualityProfile []struct {
+// getQualityProfile response struct
+type qualityProfileResponse []struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
 
 // Fetches the quality profiles
-func (r *RadarrClient) GetQualityProfiles() (qualityProfile, error) {
+func (r *RadarrClient) GetQualityProfiles() (qualityProfileResponse, error) {
 	_, body, err := r.performReq("GET", "/qualityprofile", nil)
 	if err != nil {
 		return nil, err
 	}
-	var qp qualityProfile
+	var qp qualityProfileResponse
 	err = parseJson(body, &qp)
 	if err != nil {
 		return nil, err
@@ -114,6 +115,30 @@ func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, 
 		return err
 	}
 	return nil
+}
+
+// getMovie response struct
+type getMovieResponse []struct {
+	HasFile          bool   `json:"hasFile"`
+	QualityProfileId int    `json:"qualityProfileId"`
+	Monitored        bool   `json:"monitored"`
+	RootFolderPath   string `json:"rootFolderPath"`
+}
+
+// Fetch movie details in Radarr
+//
+// id: tmdbid
+func (r *RadarrClient) GetMovie(id int) (getMovieResponse, error) {
+	_, body, err := r.performReq("GET", fmt.Sprintf("/movie?tmdbId=%d", id), nil)
+	if err != nil {
+		return nil, err
+	}
+	var gMR getMovieResponse
+	err = parseJson(body, &gMR)
+	if err != nil {
+		return nil, err
+	}
+	return gMR, nil
 }
 
 func InitRadarrClient(apikey string, hostpath string) *RadarrClient {
