@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
 )
 
 type RadarrClient struct {
@@ -15,10 +17,6 @@ type RadarrClient struct {
 	hostpath              string
 	DefaultRootPath       string
 	DefaultQualityProfile string
-}
-
-func parseJson(body []byte, target interface{}) error {
-	return json.Unmarshal(body, target)
 }
 
 func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
@@ -58,7 +56,7 @@ func (r *RadarrClient) GetRootFolder() (getRootFolderResponse, error) {
 		return nil, err
 	}
 	var rf getRootFolderResponse
-	err = parseJson(body, &rf)
+	err = util.ParseJson(body, &rf)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +77,7 @@ func (r *RadarrClient) GetQualityProfiles() (qualityProfileResponse, error) {
 		return nil, err
 	}
 	var qp qualityProfileResponse
-	err = parseJson(body, &qp)
+	err = util.ParseJson(body, &qp)
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +132,43 @@ func (r *RadarrClient) GetMovie(id int) (getMovieResponse, error) {
 		return nil, err
 	}
 	var gMR getMovieResponse
-	err = parseJson(body, &gMR)
+	err = util.ParseJson(body, &gMR)
 	if err != nil {
 		return nil, err
 	}
 	return gMR, nil
+}
+
+func (r *RadarrClient) GetRadarrDefaults(radarrDefaultRootPath string, radarrDefaultQualityProfile string, rpid map[string]string, qpid map[string]int) error {
+	// Root path
+	radarrRootPaths, err := r.GetRootFolder()
+	if len(radarrRootPaths) == 0 || err != nil {
+		return errors.New("RADARR ROOT PATH ERROR")
+	}
+
+	for _, r := range radarrRootPaths {
+		rpid["Movie: "+r.Path] = r.Path
+	}
+	if radarrDefaultRootPath == "" {
+		r.DefaultRootPath = "Movie: " + radarrRootPaths[0].Path
+	} else {
+		r.DefaultRootPath = "Movie: " + radarrDefaultRootPath
+	}
+	// Quality Profiles
+	radarrQualityProfiles, err := r.GetQualityProfiles()
+	if len(radarrQualityProfiles) == 0 || err != nil {
+		return errors.New("RADARR QUALITY PATH ERROR")
+	}
+
+	for _, v := range radarrQualityProfiles {
+		qpid["Movie: "+v.Name] = v.Id
+	}
+	if radarrDefaultQualityProfile == "" {
+		r.DefaultQualityProfile = "Movie: " + radarrQualityProfiles[0].Name
+	} else {
+		r.DefaultQualityProfile = "Movie: " + radarrDefaultQualityProfile
+	}
+	return nil
 }
 
 func InitRadarrClient(apikey string, hostpath string) *RadarrClient {

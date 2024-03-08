@@ -8,6 +8,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
+
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
 )
 
 type NotionClient struct {
@@ -15,13 +18,11 @@ type NotionClient struct {
 	secret string
 	dbid   string
 	req    *http.Request
+	Rpid   map[string]string
+	Qpid   map[string]int
 }
 
-func parseJson(body []byte, target interface{}) error {
-	return json.Unmarshal(body, target)
-}
-
-func (n *NotionClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
+func (n *NotionClient) performNotionReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
 	n.req.Method = method
 	n.req.URL, _ = url.Parse("https://api.notion.com" + "/" + endpoint)
 	if method == "POST" || method == "PATCH" {
@@ -46,31 +47,6 @@ func (n *NotionClient) performReq(method string, endpoint string, data []byte) (
 	return resp, body, nil
 }
 
-// Payload struct for UpdateDownloadStatus
-type updateDownloadStatus struct {
-	Properties struct {
-		Download struct {
-			Checkbox bool `json:"checkbox"`
-		}
-		DStatus struct {
-			Select struct {
-				Name string `json:"name"`
-				// Color string `json:"color"`
-			} `json:"select"`
-		} `json:"Download Status"`
-		QualityProfile struct {
-			Select *struct {
-				Name string `json:"name"`
-			} `json:"select"`
-		} `json:"Quality Profile"`
-		RootFolder struct {
-			Select *struct {
-				Name string `json:"name"`
-			} `json:"select"`
-		} `json:"Root Folder"`
-	} `json:"properties"`
-}
-
 type statusMap struct {
 	name  string
 	color string
@@ -92,6 +68,29 @@ var sMap = map[string]statusMap{
 //
 // status - "Queued" , "Downloading" , "Downloaded" or "Error"
 func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status string, qualityProfile string, rootPath string) error {
+	type updateDownloadStatus struct {
+		Properties struct {
+			Download struct {
+				Checkbox bool `json:"checkbox"`
+			}
+			DStatus struct {
+				Select struct {
+					Name string `json:"name"`
+					// Color string `json:"color"`
+				} `json:"select"`
+			} `json:"Download Status"`
+			QualityProfile struct {
+				Select *struct {
+					Name string `json:"name"`
+				} `json:"select"`
+			} `json:"Quality Profile"`
+			RootFolder struct {
+				Select *struct {
+					Name string `json:"name"`
+				} `json:"select"`
+			} `json:"Root Folder"`
+		} `json:"properties"`
+	}
 	payload := updateDownloadStatus{}
 	if status != "Error" && status != "Not Downloaded" {
 		payload.Properties.Download.Checkbox = true
@@ -120,7 +119,7 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 	if err != nil {
 		return err
 	}
-	_, _, err = n.performReq("PATCH", fmt.Sprintf("v1/pages/%s", id), data)
+	_, _, err = n.performNotionReq("PATCH", fmt.Sprintf("v1/pages/%s", id), data)
 	if err != nil {
 		return err
 	}
@@ -128,7 +127,7 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 }
 
 // QueryDB Response struct
-type queryDB struct {
+type queryDBResponse struct {
 	Results []struct {
 		Pgid       string `json:"id"`
 		Properties struct {
@@ -154,37 +153,35 @@ type queryDB struct {
 	} `json:"results"`
 }
 
-// QueryDB payload struct
-type queryDBPayload struct {
-	Filter struct {
-		And []struct {
-			Property *string `json:"property,omitempty"`
-			Checkbox *struct {
-				Equals bool `json:"equals"`
-			} `json:"checkbox,omitempty"`
-			Select *struct {
-				Equals string `json:"equals"`
-			} `json:"select,omitempty"`
-			Or []struct {
-				Property string `json:"property"`
-				Select   struct {
-					Equals   *string `json:"equals,omitempty"`
-					Is_empty *bool   `json:"is_empty,omitempty"`
-				} `json:"select"`
-			} `json:"or,omitempty"`
-		} `json:"and"`
-	} `json:"filter"`
-	Page_size int `json:"page_size"`
-}
-
 // Query DB for titles to Download
 //
 // mtype : Movie || TV Series
-func (n *NotionClient) QueryDB(mtype string) (queryDB, error) {
+func (n *NotionClient) QueryDB(mtype string) (queryDBResponse, error) {
 	d := "Download"
 	nd := "Not Downloaded"
 	ndb := true
 	nt := "Type"
+	type queryDBPayload struct {
+		Filter struct {
+			And []struct {
+				Property *string `json:"property,omitempty"`
+				Checkbox *struct {
+					Equals bool `json:"equals"`
+				} `json:"checkbox,omitempty"`
+				Select *struct {
+					Equals string `json:"equals"`
+				} `json:"select,omitempty"`
+				Or []struct {
+					Property string `json:"property"`
+					Select   struct {
+						Equals   *string `json:"equals,omitempty"`
+						Is_empty *bool   `json:"is_empty,omitempty"`
+					} `json:"select"`
+				} `json:"or,omitempty"`
+			} `json:"and"`
+		} `json:"filter"`
+		Page_size int `json:"page_size"`
+	}
 	payload := queryDBPayload{Filter: struct {
 		And []struct {
 			Property *string "json:\"property,omitempty\""
@@ -236,20 +233,20 @@ func (n *NotionClient) QueryDB(mtype string) (queryDB, error) {
 	}{Is_empty: &ndb}}}}}}, Page_size: 5}
 
 	data, _ := json.Marshal(payload)
-	_, body, err := n.performReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
+	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
-		return queryDB{}, err
+		return queryDBResponse{}, err
 	}
-	var qDB queryDB
-	err = parseJson(body, &qDB)
+	var qDB queryDBResponse
+	err = util.ParseJson(body, &qDB)
 	if err != nil {
-		return queryDB{}, err
+		return queryDBResponse{}, err
 	}
 	return qDB, nil
 }
 
 // QueryDBTmdb Response struct
-type queryDBTmdb struct {
+type queryDBTmdbResponse struct {
 	Results []struct {
 		Pgid string `json:"id"`
 		// Properties struct {
@@ -265,20 +262,18 @@ type queryDBTmdb struct {
 	} `json:"results"`
 }
 
-// QueryDBTmdb payload
-type QueryDBTmdbPayload struct {
-	Filter struct {
-		Property string `json:"property"`
-		Number   struct {
-			Equals int `json:"equals"`
-		} `json:"number"`
-	} `json:"filter"`
-}
-
 // Query DB for existing titles by TmdbID
 //
 // id : tmdbid
-func (n *NotionClient) QueryDBTmdb(id int) (queryDBTmdb, error) {
+func (n *NotionClient) QueryDBTmdb(id int) (queryDBTmdbResponse, error) {
+	type QueryDBTmdbPayload struct {
+		Filter struct {
+			Property string `json:"property"`
+			Number   struct {
+				Equals int `json:"equals"`
+			} `json:"number"`
+		} `json:"filter"`
+	}
 	payload := QueryDBTmdbPayload{struct {
 		Property string `json:"property"`
 		Number   struct {
@@ -288,56 +283,57 @@ func (n *NotionClient) QueryDBTmdb(id int) (queryDBTmdb, error) {
 		Equals int `json:"equals"`
 	}{Equals: id}}}
 	data, _ := json.Marshal(payload)
-	_, body, err := n.performReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
+	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
-		return queryDBTmdb{}, err
+		return queryDBTmdbResponse{}, err
 	}
-	var qDBT queryDBTmdb
-	err = parseJson(body, &qDBT)
+	var qDBT queryDBTmdbResponse
+	err = util.ParseJson(body, &qDBT)
 	if err != nil {
-		return queryDBTmdb{}, err
+		return queryDBTmdbResponse{}, err
 	}
 	return qDBT, nil
-}
-
-type addDBPropertiesPayload struct {
-	Properties struct {
-		QualityProfile struct {
-			Type   string `json:"type"`
-			Select struct {
-				Options []struct {
-					Name string `json:"name"`
-				} `json:"options"`
-			} `json:"select"`
-		} `json:"Quality Profile,omitempty"`
-		Download struct {
-			Type     string   `json:"type"`
-			Checkbox struct{} `json:"checkbox"`
-		} `json:"Download,omitempty"`
-		DownloadStatus struct {
-			Type   string `json:"type"`
-			Select struct {
-				Options []struct {
-					Name  string `json:"name"`
-					Color string `json:"color"`
-				} `json:"options"`
-			} `json:"select"`
-		} `json:"Download Status,omitempty"`
-		RootFolder struct {
-			Type   string `json:"type"`
-			Select struct {
-				Options []struct {
-					Name string `json:"name"`
-				} `json:"options"`
-			} `json:"select"`
-		} `json:"Root Folder,omitempty"`
-	} `json:"properties"`
 }
 
 // addQualityProfiles() adds the properties ( Download, Download Status, Quality Profile ) to the DB.
 //
 // profiles : Radarr/Sonarr quality profiles to add
 func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]string) error {
+	n.Rpid = rpid
+	n.Qpid = qpid
+	type addDBPropertiesPayload struct {
+		Properties struct {
+			QualityProfile struct {
+				Type   string `json:"type"`
+				Select struct {
+					Options []struct {
+						Name string `json:"name"`
+					} `json:"options"`
+				} `json:"select"`
+			} `json:"Quality Profile,omitempty"`
+			Download struct {
+				Type     string   `json:"type"`
+				Checkbox struct{} `json:"checkbox"`
+			} `json:"Download,omitempty"`
+			DownloadStatus struct {
+				Type   string `json:"type"`
+				Select struct {
+					Options []struct {
+						Name  string `json:"name"`
+						Color string `json:"color"`
+					} `json:"options"`
+				} `json:"select"`
+			} `json:"Download Status,omitempty"`
+			RootFolder struct {
+				Type   string `json:"type"`
+				Select struct {
+					Options []struct {
+						Name string `json:"name"`
+					} `json:"options"`
+				} `json:"select"`
+			} `json:"Root Folder,omitempty"`
+		} `json:"properties"`
+	}
 	payload := addDBPropertiesPayload{}
 	payload.Properties.QualityProfile.Type = "select"
 	for profile := range qpid {
@@ -360,14 +356,30 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 	payload.Properties.Download.Type = "checkbox"
 	payload.Properties.DownloadStatus.Type = "select"
 	data, _ := json.Marshal(payload)
-	_, _, err := n.performReq("PATCH", fmt.Sprintf("v1/databases/%s/", n.dbid), data)
+	_, _, err := n.performNotionReq("PATCH", fmt.Sprintf("v1/databases/%s/", n.dbid), data)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// constructor
+func (n *NotionClient) GetNotionQualityProfileProp(qualityProfile int) (string, error) {
+	for key, val := range n.Qpid {
+		if val == qualityProfile {
+			return key, nil
+		}
+	}
+	return "", errors.New("invalid qpid key passed")
+}
+func (n *NotionClient) GetNotionRootPathProp(rootPath string) (string, error) {
+	for key, val := range n.Rpid {
+		if filepath.Clean(val) == filepath.Clean(rootPath) {
+			return key, nil
+		}
+	}
+	return "", errors.New("invalid rpid key passed")
+}
+
 func InitNotionClient(username string, secret string, dbid string) *NotionClient {
 	n := &NotionClient{user: username, secret: secret, dbid: dbid}
 	n.req, _ = http.NewRequest("", "", nil)
