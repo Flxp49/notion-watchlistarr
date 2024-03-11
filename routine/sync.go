@@ -1,4 +1,4 @@
-package goroutine
+package routine
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/radarr"
 )
 
-func Rdrr(Logger *slog.Logger, N *notion.NotionClient, R *radarr.RadarrClient) {
+func RadarrSync(Logger *slog.Logger, N *notion.NotionClient, R *radarr.RadarrClient) {
 
 	for {
 		Logger.Info("Radarr: Fetching titles")

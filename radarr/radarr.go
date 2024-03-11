@@ -92,17 +92,15 @@ type addMoviePayload struct {
 	RootFolderPath   string `json:"rootFolderPath"`
 	Monitored        bool   `json:"monitored"`
 	AddOptions       struct {
-		SearchForMovie bool   `json:"searchForMovie"`
-		Monitor        string `json:"monitor"`
+		SearchForMovie bool `json:"searchForMovie"`
 	} `json:"addOptions"`
 }
 
 // Add the movie to Radarr
 func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) error {
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
-		SearchForMovie bool   `json:"searchForMovie"`
-		Monitor        string `json:"monitor"`
-	}{}}
+		SearchForMovie bool `json:"searchForMovie"`
+	}{SearchForMovie: searchForMovie}}
 
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -124,10 +122,8 @@ type getMovieResponse []struct {
 }
 
 // Fetch movie details in Radarr
-//
-// id: tmdbid
-func (r *RadarrClient) GetMovie(id int) (getMovieResponse, error) {
-	_, body, err := r.performReq("GET", fmt.Sprintf("/movie?tmdbId=%d", id), nil)
+func (r *RadarrClient) GetMovie(tmdbId int) (getMovieResponse, error) {
+	_, body, err := r.performReq("GET", fmt.Sprintf("/movie?tmdbId=%d", tmdbId), nil)
 	if err != nil {
 		return nil, err
 	}

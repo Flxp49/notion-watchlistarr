@@ -2,6 +2,7 @@ package api
 
 import (
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
@@ -27,88 +28,97 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(200)
-	// call function for everything after?
 	s.Logger.Info("Radarr post request", "data", movieData)
+	// Check if title exists in the watchlist
 	page, err := s.N.QueryDBTmdb(movieData.Movie.TmdbId)
 	if err != nil {
 		s.Logger.Error("Radarr Webhook Error", "error", err)
 		return
 	}
-	if len(page.Results) != 0 { // title exists, update status in watchlist
+	if len(page.Results) == 0 {
+		return
+	}
+
+	//get movie file details
+	movie, err := s.R.GetMovie(movieData.Movie.TmdbId)
+	if err != nil {
+		s.Logger.Error("Radarr Webhook Error", "error", err)
+		return
+	}
+	switch movieData.EventType {
+	case "MovieAdded":
+		//get rootpath and qualityprofile properties for notion db
+		movieQualityProp, err := s.N.GetNotionQualityProfileProp(movie[0].QualityProfileId)
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB movie quality profile property value", "error", err)
+			return
+		}
+		rootPathProp, err := s.N.GetNotionRootPathProp(movie[0].RootFolderPath)
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB rootfolder property value", "error", err)
+			return
+		}
+		if movie[0].HasFile {
+			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, true, "Downloaded", movieQualityProp, rootPathProp)
+		} else {
+			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, true, "Queued", movieQualityProp, rootPathProp)
+		}
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to update download status in watchlist", "error", err)
+		}
+
+	case "Grab":
 		movie, err := s.R.GetMovie(movieData.Movie.TmdbId)
 		if err != nil {
 			s.Logger.Error("Radarr Webhook Error", "error", err)
 			return
 		}
-		switch movieData.EventType {
-		case "MovieAdded":
-			//query for movie in watchlist
-			movieQualityProp, err := s.N.GetNotionQualityProfileProp(movie[0].QualityProfileId)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB movie quality profile property value", "error", err)
-				return
-			}
-			rootPathProp, err := s.N.GetNotionRootPathProp(movie[0].RootFolderPath)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB rootfolder property value", "error", err)
-				return
-			}
-			if movie[0].HasFile {
-				err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, true, "Downloaded", movieQualityProp, rootPathProp)
-			} else {
-				err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, true, "Queued", movieQualityProp, rootPathProp)
-			}
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to update download status in watchlist", "error", err)
-			}
-
-		case "Grab":
-			movie, err := s.R.GetMovie(movieData.Movie.TmdbId)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error", "error", err)
-				return
-			}
-			movieQualityProp, err := s.N.GetNotionQualityProfileProp(movie[0].QualityProfileId)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB movie quality profile property value", "error", err)
-				return
-			}
-			rootPathProp, err := s.N.GetNotionRootPathProp(movie[0].RootFolderPath)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB rootfolder property value", "error", err)
-				return
-			}
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, true, "Downloading", movieQualityProp, rootPathProp)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to update download status in watchlist", "error", err)
-			}
-		case "Download":
-			movieQualityProp, err := s.N.GetNotionQualityProfileProp(movie[0].QualityProfileId)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB movie quality profile property value", "error", err)
-				return
-			}
-			rootPathProp, err := s.N.GetNotionRootPathProp(movie[0].RootFolderPath)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB rootfolder property value", "error", err)
-				return
-			}
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, true, "Downloaded", movieQualityProp, rootPathProp)
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to update download status in watchlist", "error", err)
-			}
-		case "MovieDelete":
-			if !movieData.DeletedFiles {
-				return
-			}
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Not Downloaded", "", "")
-			if err != nil {
-				s.Logger.Error("Radarr Webhook Error: Failed to update download status in watchlist", "error", err)
-			}
-		default:
-			s.Logger.Error("Radarr Webhook Error", "error", "EventType not valid in payload")
+		movieQualityProp, err := s.N.GetNotionQualityProfileProp(movie[0].QualityProfileId)
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB movie quality profile property value", "error", err)
+			return
 		}
+		rootPathProp, err := s.N.GetNotionRootPathProp(movie[0].RootFolderPath)
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB rootfolder property value", "error", err)
+			return
+		}
+		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, true, "Downloading", movieQualityProp, rootPathProp)
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to update download status in watchlist", "error", err)
+		}
+	case "Download":
+		movieQualityProp, err := s.N.GetNotionQualityProfileProp(movie[0].QualityProfileId)
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB movie quality profile property value", "error", err)
+			return
+		}
+		rootPathProp, err := s.N.GetNotionRootPathProp(movie[0].RootFolderPath)
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to fetch notion DB rootfolder property value", "error", err)
+			return
+		}
+		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, true, "Downloaded", movieQualityProp, rootPathProp)
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to update download status in watchlist", "error", err)
+		}
+	case "MovieDelete":
+		if !movieData.DeletedFiles {
+			return
+		}
+		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Not Downloaded", "", "")
+		if err != nil {
+			s.Logger.Error("Radarr Webhook Error: Failed to update download status in watchlist", "error", err)
+		}
+	default:
+		s.Logger.Error("Radarr Webhook Error", "error", "EventType not valid in payload")
 	}
+}
+
+func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	r.Body.Close()
+	log.Println(string(body))
 }
 
 func (s *Server) incorrectReqHandler(w http.ResponseWriter, r *http.Request) {

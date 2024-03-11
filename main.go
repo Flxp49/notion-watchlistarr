@@ -7,9 +7,9 @@ import (
 	"os"
 
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/api"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/goroutine"
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/notion"
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/radarr"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/routine"
 	"github.com/joho/godotenv"
 )
 
@@ -49,10 +49,8 @@ func main() {
 	if err != nil {
 		Logger.Error("Error fetching Radarr defaults, Radarr routine not initialized", "Error", err)
 		radarrStart = false
-		go goroutine.Rdrr(Logger, N, R)
 	}
 	//todo: same as the above for sonarr
-
 	if radarrStart { // || sonarrStart
 		// Add properties to the DB
 		err = N.AddDBProperties(Qpid, Rpid)
@@ -61,6 +59,7 @@ func main() {
 			os.Exit(1)
 		}
 		Logger.Info("Database updated with new properties")
+		go routine.RadarrSync(Logger, N, R)
 	}
 
 	PORT := os.Getenv("PORT")

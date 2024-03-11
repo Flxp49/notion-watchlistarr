@@ -2,7 +2,7 @@
 .env
 
 # tests
-test*
+*test*
 
 # logs
 *.log

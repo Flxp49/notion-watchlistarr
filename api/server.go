@@ -25,8 +25,8 @@ func NewServer(listenAddr string, N *notion.NotionClient, R *radarr.RadarrClient
 }
 
 func (s *Server) Start() error {
-	http.HandleFunc("POST /radarr", s.radarrHandler)
-	// http.HandleFunc("POST /sonarr", sonarrHandler)
 	http.HandleFunc("/", s.incorrectReqHandler)
+	http.HandleFunc("POST /radarr", s.radarrHandler)
+	http.HandleFunc("POST /sonarr", s.sonarrHandler)
 	return http.ListenAndServe(":"+s.listenAddr, nil)
 }
