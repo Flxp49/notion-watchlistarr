@@ -1,5 +1,8 @@
 # dotenv environment variables file
 .env
 
+# tests
+test*
+
 # logs
 *.log
