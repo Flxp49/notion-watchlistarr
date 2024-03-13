@@ -17,6 +17,7 @@ type RadarrClient struct {
 	hostpath              string
 	DefaultRootPath       string
 	DefaultQualityProfile string
+	DefaultMonitorProfile string
 }
 
 func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
@@ -92,17 +93,22 @@ type addMoviePayload struct {
 	RootFolderPath   string `json:"rootFolderPath"`
 	Monitored        bool   `json:"monitored"`
 	AddOptions       struct {
-		SearchForMovie bool `json:"searchForMovie"`
+		SearchForMovie bool   `json:"searchForMovie"`
+		Monitor        string `json:"monitor"`
 	} `json:"addOptions"`
 }
 
 // Add the movie to Radarr
-func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool) error {
+//
+// monitor : "MovieOnly" | "MovieandCollection" | "None"
+func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool, monitor string) error {
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
-		SearchForMovie bool `json:"searchForMovie"`
-	}{SearchForMovie: searchForMovie}}
+		SearchForMovie bool   `json:"searchForMovie"`
+		Monitor        string `json:"monitor"`
+	}{SearchForMovie: searchForMovie, Monitor: monitor}}
 
 	data, err := json.Marshal(payload)
+	fmt.Println(string(data))
 	if err != nil {
 		return err
 	}

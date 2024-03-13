@@ -17,6 +17,7 @@ type SonarrClient struct {
 	hostpath              string
 	DefaultRootPath       string
 	DefaultQualityProfile string
+	DefaultMonitorProfile string
 }
 
 func (s *SonarrClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
@@ -111,16 +112,21 @@ type addSeriesPayload struct {
 	TvdbId           int    `json:"tvdbId"`
 	RootFolderPath   string `json:"rootFolderPath"`
 	Monitored        bool   `json:"monitored"`
+	SeasonFolder     bool   `json:"seasonFolder"`
 	AddOptions       struct {
-		SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
+		SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
+		Monitor                  string `json:"monitor"`
 	} `json:"addOptions"`
 }
 
 // Add the series to Sonarr
-func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int, rootFolderPath string, monitored bool, SearchForMissingEpisodes bool) error {
-	payload := addSeriesPayload{Title: title, QualityProfileId: qualityProfileId, TvdbId: TvdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
-		SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
-	}{SearchForMissingEpisodes: SearchForMissingEpisodes}}
+//
+// monitor : "AllEpisodes" | "FutureEpisodes" | "MissingEpisodes" | "ExistingEpisodes" | "RecentEpisodes" | "PilotEpisode" | "FirstSeason" | "LastSeason" | "MonitorSpecials" | "UnmonitorSpecials" | "None"
+func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int, rootFolderPath string, monitored bool, seasonFolder bool, SearchForMissingEpisodes bool, monitor string) error {
+	payload := addSeriesPayload{Title: title, QualityProfileId: qualityProfileId, TvdbId: TvdbId, RootFolderPath: rootFolderPath, Monitored: monitored, SeasonFolder: seasonFolder, AddOptions: struct {
+		SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
+		Monitor                  string `json:"monitor"`
+	}{SearchForMissingEpisodes: SearchForMissingEpisodes, Monitor: monitor}}
 
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -139,6 +145,9 @@ type getSeriesResponse []struct {
 	QualityProfileId int    `json:"qualityProfileId"`
 	Monitored        bool   `json:"monitored"`
 	RootFolderPath   string `json:"rootFolderPath"`
+	Statistics       struct {
+		PercentOfEpisodes int `json:"percentOfEpisodes"`
+	} `json:"statistics"`
 }
 
 // Fetch series details in Sonarr

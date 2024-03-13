@@ -1,18 +1,17 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"os"
+	"testing"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/api"
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/notion"
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/radarr"
 	"github.com/joho/godotenv"
 )
 
-func main() {
+func TestApp(t *testing.T) {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -45,9 +44,9 @@ func main() {
 	if os.Getenv("RADARR_DEFAULT_QUALITY_PROFILE") != "" {
 		radarrDefaultQualityProfile = os.Getenv("RADARR_DEFAULT_QUALITY_PROFILE")
 	}
-	if os.Getenv("RADARR_DEFAULT_MONITOR") != "" {
-		// radarrDefaultMonitor = os.Getenv("RADARR_DEFAULT_MONITOR")
-	}
+	// if os.Getenv("RADARR_DEFAULT_MONITOR") != "" {
+	// 	radarrDefaultMonitor = os.Getenv("RADARR_DEFAULT_MONITOR")
+	// }
 
 	err = R.GetRadarrDefaults(radarrDefaultRootPath, radarrDefaultQualityProfile, Rpid, Qpid)
 	if err != nil {
@@ -64,17 +63,5 @@ func main() {
 		}
 		Logger.Info("Database updated with new properties")
 		// go routine.RadarrSync(Logger, N, R)
-	}
-
-	PORT := os.Getenv("PORT")
-	if PORT == "" {
-		PORT = "7879"
-	}
-
-	Server := api.NewServer(PORT, N, R, Logger)
-	err = Server.Start()
-	if err != nil {
-		Logger.Error(fmt.Sprintf("Failed to listen on PORT %s", PORT), "error", err)
-		os.Exit(1)
 	}
 }

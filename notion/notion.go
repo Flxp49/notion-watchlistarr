@@ -13,13 +13,18 @@ import (
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
 )
 
+//	type monitorMap struct {
+//		name  string
+//		color string
+//	}
 type NotionClient struct {
-	user   string
-	secret string
-	dbid   string
-	req    *http.Request
-	Rpid   map[string]string
-	Qpid   map[string]int
+	user            string
+	secret          string
+	dbid            string
+	req             *http.Request
+	Rpid            map[string]string
+	Qpid            map[string]int
+	monitorProfiles map[string]string
 }
 
 func (n *NotionClient) performNotionReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
@@ -299,8 +304,25 @@ func (n *NotionClient) QueryDBTmdb(id int) (queryDBTmdbResponse, error) {
 //
 // profiles : Radarr/Sonarr quality profiles to add
 func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]string) error {
+
+	var monitorProfiles = map[string]string{
+		"TV Series: All Episodes":        "AllEpisodes",
+		"TV Series: Future Episodes":     "FutureEpisodes",
+		"TV Series: Missing Episodes":    "MissingEpisodes",
+		"TV Series: Existing Episodes":   "ExistingEpisodes",
+		"TV Series: Recent Episodes":     "RecentEpisodes",
+		"TV Series: PilotEpisode":        "PilotEpisode",
+		"TV Series: FirstSeason ":        "FirstSeason",
+		"TV Series: Last Season":         "LastSeason",
+		"TV Series: Monitor Specials":    "MonitorSpecials",
+		"TV Series: Unmonitor Specials ": "UnmonitorSpecials",
+		"TV Series: None":                "None",
+		"Movie: Movie Only":              "MovieOnly",
+		"Movie: Collection":              "MovieandCollection",
+	}
 	n.Rpid = rpid
 	n.Qpid = qpid
+	n.monitorProfiles = monitorProfiles
 	type addDBPropertiesPayload struct {
 		Properties struct {
 			QualityProfile struct {
@@ -332,6 +354,14 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 					} `json:"options"`
 				} `json:"select"`
 			} `json:"Root Folder,omitempty"`
+			Monitor struct {
+				Type   string `json:"type"`
+				Select struct {
+					Options []struct {
+						Name string `json:"name"`
+					} `json:"options"`
+				} `json:"select"`
+			} `json:"Monitor,omitempty"`
 		} `json:"properties"`
 	}
 	payload := addDBPropertiesPayload{}
@@ -346,6 +376,12 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 		payload.Properties.RootFolder.Select.Options = append(payload.Properties.RootFolder.Select.Options, struct {
 			Name string `json:"name"`
 		}{Name: path})
+	}
+	payload.Properties.Monitor.Type = "select"
+	for m := range monitorProfiles {
+		payload.Properties.Monitor.Select.Options = append(payload.Properties.Monitor.Select.Options, struct {
+			Name string `json:"name"`
+		}{Name: m})
 	}
 	for _, val := range sMap {
 		payload.Properties.DownloadStatus.Select.Options = append(payload.Properties.DownloadStatus.Select.Options, struct {
