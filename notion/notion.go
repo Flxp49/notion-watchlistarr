@@ -17,14 +17,30 @@ import (
 //		name  string
 //		color string
 //	}
+
+var MonitorProfiles = map[string]string{
+	"TV Series: All Episodes":        "AllEpisodes",
+	"TV Series: Future Episodes":     "FutureEpisodes",
+	"TV Series: Missing Episodes":    "MissingEpisodes",
+	"TV Series: Existing Episodes":   "ExistingEpisodes",
+	"TV Series: Recent Episodes":     "RecentEpisodes",
+	"TV Series: PilotEpisode":        "PilotEpisode",
+	"TV Series: FirstSeason ":        "FirstSeason",
+	"TV Series: Last Season":         "LastSeason",
+	"TV Series: Monitor Specials":    "MonitorSpecials",
+	"TV Series: Unmonitor Specials ": "UnmonitorSpecials",
+	"TV Series: None":                "None",
+	"Movie: Movie Only":              "MovieOnly",
+	"Movie: Collection":              "MovieandCollection",
+}
+
 type NotionClient struct {
-	user            string
-	secret          string
-	dbid            string
-	req             *http.Request
-	Rpid            map[string]string
-	Qpid            map[string]int
-	monitorProfiles map[string]string
+	user   string
+	secret string
+	dbid   string
+	req    *http.Request
+	Rpid   map[string]string
+	Qpid   map[string]int
 }
 
 func (n *NotionClient) performNotionReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
@@ -148,23 +164,29 @@ type queryDBResponse struct {
 				Select struct {
 					Name string `json:"name"`
 				} `json:"select"`
-			} `json:"Quality Profile,omitempty"`
+			} `json:"Quality Profile"`
 			RootFolder struct {
 				Select struct {
 					Name string `json:"name"`
-				} `json:"select,omitempty"`
+				} `json:"select"`
 			} `json:"Root Folder"`
+			MonitorProfile struct {
+				Select struct {
+					Name string `json:"name"`
+				} `json:"select"`
+			} `json:"Monitor"`
 		} `json:"properties"`
 	} `json:"results"`
 }
 
-// Query DB for titles to Download
+// Query DB for titles to Download where download is checked and download status is "Not Downloaded" or Empty
 //
 // mtype : Movie || TV Series
 func (n *NotionClient) QueryDB(mtype string) (queryDBResponse, error) {
 	d := "Download"
 	nd := "Not Downloaded"
 	ndb := true
+	e := "Error"
 	nt := "Type"
 	type queryDBPayload struct {
 		Filter struct {
@@ -235,7 +257,10 @@ func (n *NotionClient) QueryDB(mtype string) (queryDBResponse, error) {
 	}{Equals: &nd}}, {Property: "Download Status", Select: struct {
 		Equals   *string "json:\"equals,omitempty\""
 		Is_empty *bool   "json:\"is_empty,omitempty\""
-	}{Is_empty: &ndb}}}}}}, Page_size: 5}
+	}{Is_empty: &ndb}}, {Property: "Download Status", Select: struct {
+		Equals   *string "json:\"equals,omitempty\""
+		Is_empty *bool   "json:\"is_empty,omitempty\""
+	}{Equals: &e}}}}}}, Page_size: 5}
 
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
@@ -251,7 +276,7 @@ func (n *NotionClient) QueryDB(mtype string) (queryDBResponse, error) {
 }
 
 // QueryDBTmdb Response struct
-type queryDBTmdbResponse struct {
+type queryDBIdResponse struct {
 	Results []struct {
 		Pgid string `json:"id"`
 		// Properties struct {
@@ -270,7 +295,7 @@ type queryDBTmdbResponse struct {
 // Query DB for existing titles by TmdbID
 //
 // id : tmdbid
-func (n *NotionClient) QueryDBTmdb(id int) (queryDBTmdbResponse, error) {
+func (n *NotionClient) QueryDBTmdb(tmdbId int) (queryDBIdResponse, error) {
 	type QueryDBTmdbPayload struct {
 		Filter struct {
 			Property string `json:"property"`
@@ -286,43 +311,59 @@ func (n *NotionClient) QueryDBTmdb(id int) (queryDBTmdbResponse, error) {
 		} `json:"number"`
 	}{Property: "ID", Number: struct {
 		Equals int `json:"equals"`
-	}{Equals: id}}}
+	}{Equals: tmdbId}}}
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
-		return queryDBTmdbResponse{}, err
+		return queryDBIdResponse{}, err
 	}
-	var qDBT queryDBTmdbResponse
+	var qDBT queryDBIdResponse
 	err = util.ParseJson(body, &qDBT)
 	if err != nil {
-		return queryDBTmdbResponse{}, err
+		return queryDBIdResponse{}, err
 	}
 	return qDBT, nil
+}
+
+// Query DB for existing titles by ImdbID
+//
+// id : ImdbID
+func (n *NotionClient) QueryDBImdb(imdbId string) (queryDBIdResponse, error) {
+	type QueryDBImdbPayload struct {
+		Filter struct {
+			Property  string `json:"property"`
+			Rich_text struct {
+				Equals string `json:"equals"`
+			} `json:"rich_text"`
+		} `json:"filter"`
+	}
+	payload := QueryDBImdbPayload{struct {
+		Property  string `json:"property"`
+		Rich_text struct {
+			Equals string `json:"equals"`
+		} `json:"rich_text"`
+	}{Property: "IMDb ID", Rich_text: struct {
+		Equals string `json:"equals"`
+	}{Equals: imdbId}}}
+	data, _ := json.Marshal(payload)
+	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
+	if err != nil {
+		return queryDBIdResponse{}, err
+	}
+	var qDBI queryDBIdResponse
+	err = util.ParseJson(body, &qDBI)
+	if err != nil {
+		return queryDBIdResponse{}, err
+	}
+	return qDBI, nil
 }
 
 // addQualityProfiles() adds the properties ( Download, Download Status, Quality Profile ) to the DB.
 //
 // profiles : Radarr/Sonarr quality profiles to add
 func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]string) error {
-
-	var monitorProfiles = map[string]string{
-		"TV Series: All Episodes":        "AllEpisodes",
-		"TV Series: Future Episodes":     "FutureEpisodes",
-		"TV Series: Missing Episodes":    "MissingEpisodes",
-		"TV Series: Existing Episodes":   "ExistingEpisodes",
-		"TV Series: Recent Episodes":     "RecentEpisodes",
-		"TV Series: PilotEpisode":        "PilotEpisode",
-		"TV Series: FirstSeason ":        "FirstSeason",
-		"TV Series: Last Season":         "LastSeason",
-		"TV Series: Monitor Specials":    "MonitorSpecials",
-		"TV Series: Unmonitor Specials ": "UnmonitorSpecials",
-		"TV Series: None":                "None",
-		"Movie: Movie Only":              "MovieOnly",
-		"Movie: Collection":              "MovieandCollection",
-	}
 	n.Rpid = rpid
 	n.Qpid = qpid
-	n.monitorProfiles = monitorProfiles
 	type addDBPropertiesPayload struct {
 		Properties struct {
 			QualityProfile struct {
@@ -332,11 +373,11 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 						Name string `json:"name"`
 					} `json:"options"`
 				} `json:"select"`
-			} `json:"Quality Profile,omitempty"`
+			} `json:"Quality Profile"`
 			Download struct {
 				Type     string   `json:"type"`
 				Checkbox struct{} `json:"checkbox"`
-			} `json:"Download,omitempty"`
+			} `json:"Download"`
 			DownloadStatus struct {
 				Type   string `json:"type"`
 				Select struct {
@@ -345,7 +386,7 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 						Color string `json:"color"`
 					} `json:"options"`
 				} `json:"select"`
-			} `json:"Download Status,omitempty"`
+			} `json:"Download Status"`
 			RootFolder struct {
 				Type   string `json:"type"`
 				Select struct {
@@ -353,7 +394,7 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 						Name string `json:"name"`
 					} `json:"options"`
 				} `json:"select"`
-			} `json:"Root Folder,omitempty"`
+			} `json:"Root Folder"`
 			Monitor struct {
 				Type   string `json:"type"`
 				Select struct {
@@ -361,7 +402,7 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 						Name string `json:"name"`
 					} `json:"options"`
 				} `json:"select"`
-			} `json:"Monitor,omitempty"`
+			} `json:"Monitor"`
 		} `json:"properties"`
 	}
 	payload := addDBPropertiesPayload{}
@@ -378,7 +419,7 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 		}{Name: path})
 	}
 	payload.Properties.Monitor.Type = "select"
-	for m := range monitorProfiles {
+	for m := range MonitorProfiles {
 		payload.Properties.Monitor.Select.Options = append(payload.Properties.Monitor.Select.Options, struct {
 			Name string `json:"name"`
 		}{Name: m})
@@ -405,7 +446,7 @@ func (n *NotionClient) GetNotionQualityProfileProp(qualityProfile int) (string, 
 			return key, nil
 		}
 	}
-	return "", errors.New("invalid qpid key passed")
+	return "", errors.New("invalid qpid value passed")
 }
 func (n *NotionClient) GetNotionRootPathProp(rootPath string) (string, error) {
 	for key, val := range n.Rpid {
@@ -413,7 +454,15 @@ func (n *NotionClient) GetNotionRootPathProp(rootPath string) (string, error) {
 			return key, nil
 		}
 	}
-	return "", errors.New("invalid rpid key passed")
+	return "", errors.New("invalid rpid value passed")
+}
+func (n *NotionClient) GetNotionMonitorProp(monitorProfile string) (string, error) {
+	for key, val := range MonitorProfiles {
+		if val == monitorProfile {
+			return key, nil
+		}
+	}
+	return "", errors.New("invalid monitorProfile value passed")
 }
 
 func InitNotionClient(username string, secret string, dbid string) *NotionClient {

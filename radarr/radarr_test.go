@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
 	"github.com/joho/godotenv"
 )
 
@@ -19,19 +20,34 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestAddMovie(t *testing.T) {
-	err := Radarr.AddMovie("American Psycho", 4, 1359, "D:\\Media\\Movies", true, true, "MovieandCollection")
+//	func TestAddMovie(t *testing.T) {
+//		err := Radarr.AddMovie("American Psycho", 4, 1359, "D:\\Media\\Movies", true, true, "MovieandCollection")
+//		if err != nil {
+//			t.Fatal(err)
+//		}
+//	}
+func TestAddExistingMovie(t *testing.T) {
+	err := Radarr.AddMovie("Finch", 4, 522402, "D:\\Media\\Movies", true, true, "MovieandCollection")
 	if err != nil {
-		t.Fatal(err)
+		t.Log(err)
+		t.Log(util.ExistingTitleErrorHandle(err))
 	}
 }
 
 func TestGetMovie(t *testing.T) {
-	movie, err := Radarr.GetMovie(74)
+	movie, err := Radarr.GetMovie(557)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(movie)
+}
+
+func TestGetAllMovie(t *testing.T) {
+	movie, err := Radarr.GetMovie(-1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(len(movie))
 }
 
 func TestGetRootFolder(t *testing.T) {

@@ -16,7 +16,7 @@ type SonarrClient struct {
 	req                   *http.Request
 	hostpath              string
 	DefaultRootPath       string
-	DefaultQualityProfile string
+	DefaultQualityProfile int
 	DefaultMonitorProfile string
 }
 
@@ -40,7 +40,7 @@ func (s *SonarrClient) performReq(method string, endpoint string, data []byte) (
 		if err == nil {
 			err = errors.New(string(body))
 		}
-		return nil, nil, err
+		return nil, nil, &util.RequestError{StatusCode: resp.StatusCode, Err: err}
 	}
 	return resp, body, nil
 }
@@ -114,19 +114,19 @@ type addSeriesPayload struct {
 	Monitored        bool   `json:"monitored"`
 	SeasonFolder     bool   `json:"seasonFolder"`
 	AddOptions       struct {
-		SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
-		Monitor                  string `json:"monitor"`
+		SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
+		MonitorTypes             string
 	} `json:"addOptions"`
 }
 
 // Add the series to Sonarr
 //
 // monitor : "AllEpisodes" | "FutureEpisodes" | "MissingEpisodes" | "ExistingEpisodes" | "RecentEpisodes" | "PilotEpisode" | "FirstSeason" | "LastSeason" | "MonitorSpecials" | "UnmonitorSpecials" | "None"
-func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int, rootFolderPath string, monitored bool, seasonFolder bool, SearchForMissingEpisodes bool, monitor string) error {
+func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int, rootFolderPath string, monitored bool, seasonFolder bool, SearchForMissingEpisodes bool, monitorProfile string) error {
 	payload := addSeriesPayload{Title: title, QualityProfileId: qualityProfileId, TvdbId: TvdbId, RootFolderPath: rootFolderPath, Monitored: monitored, SeasonFolder: seasonFolder, AddOptions: struct {
-		SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
-		Monitor                  string `json:"monitor"`
-	}{SearchForMissingEpisodes: SearchForMissingEpisodes, Monitor: monitor}}
+		SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
+		MonitorTypes             string
+	}{SearchForMissingEpisodes: SearchForMissingEpisodes, MonitorTypes: monitorProfile}}
 
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -141,7 +141,7 @@ func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int,
 
 // getMovie response struct
 type getSeriesResponse []struct {
-	// HasFile          bool   `json:"hasFile"`
+	ImdbId           string `json:"imdbId"`
 	QualityProfileId int    `json:"qualityProfileId"`
 	Monitored        bool   `json:"monitored"`
 	RootFolderPath   string `json:"rootFolderPath"`
@@ -152,11 +152,16 @@ type getSeriesResponse []struct {
 
 // Fetch series details in Sonarr
 func (s *SonarrClient) GetSeries(tvdbId int) (getSeriesResponse, error) {
-	_, body, err := s.performReq("GET", fmt.Sprintf("/series?tvdbId=%d", tvdbId), nil)
+	var query string
+	if tvdbId == -1 {
+		query = "/series"
+	} else {
+		query = fmt.Sprintf("/series?tvdbId=%d", tvdbId)
+	}
+	_, body, err := s.performReq("GET", query, nil)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(body))
 	var gSR getSeriesResponse
 	err = util.ParseJson(body, &gSR)
 	if err != nil {
@@ -165,34 +170,45 @@ func (s *SonarrClient) GetSeries(tvdbId int) (getSeriesResponse, error) {
 	return gSR, nil
 }
 
-func (s *SonarrClient) GetSonarrDefaults(sonarrDefaultRootPath string, sonarrDefaultQualityProfile string, rpid map[string]string, qpid map[string]int) error {
+func (s *SonarrClient) SonarrDefaults(sonarrDefaultRootPath string, sonarrDefaultQualityProfile string, sonarrDefaultMonitorProfile string, rpid map[string]string, qpid map[string]int) error {
+	//set default monitor
+	if sonarrDefaultMonitorProfile == "" {
+		s.DefaultMonitorProfile = "AllEpisodes"
+	} else {
+		s.DefaultMonitorProfile = sonarrDefaultMonitorProfile
+	}
 	// Root path
 	sonarrRootPaths, err := s.GetRootFolder()
 	if len(sonarrRootPaths) == 0 || err != nil {
-		return errors.New("SONARR ROOT PATH ERROR")
+		return errors.Join(errors.New("failed to fetch sonarr root paths from sonarr"), err)
 	}
 
 	for _, s := range sonarrRootPaths {
 		rpid["TV Series: "+s.Path] = s.Path
 	}
 	if sonarrDefaultRootPath == "" {
-		s.DefaultRootPath = "TV Series: " + sonarrRootPaths[0].Path
+		s.DefaultRootPath = sonarrRootPaths[0].Path
 	} else {
-		s.DefaultRootPath = "TV Series: " + sonarrDefaultRootPath
+		s.DefaultRootPath = sonarrDefaultRootPath
 	}
 	// Quality Profiles
 	sonarrQualityProfiles, err := s.GetQualityProfiles()
 	if len(sonarrQualityProfiles) == 0 || err != nil {
-		return errors.New("SONARR QUALITY PATH ERROR")
+		return errors.Join(errors.New("failed to fetch sonarr quality profiles from sonarr"), err)
 	}
 
 	for _, v := range sonarrQualityProfiles {
 		qpid["TV Series: "+v.Name] = v.Id
 	}
 	if sonarrDefaultQualityProfile == "" {
-		s.DefaultQualityProfile = "TV Series: " + sonarrQualityProfiles[0].Name
+		s.DefaultQualityProfile = sonarrQualityProfiles[0].Id
 	} else {
-		s.DefaultQualityProfile = "TV Series: " + sonarrDefaultQualityProfile
+		//check if user passed quality profile is valid or not
+		profileId, exists := qpid["TV Series: "+sonarrDefaultQualityProfile]
+		if !exists {
+			return errors.New("wrong default quality profile passed")
+		}
+		s.DefaultQualityProfile = profileId
 	}
 	return nil
 }

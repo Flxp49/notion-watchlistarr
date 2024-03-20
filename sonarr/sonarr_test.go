@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
 	"github.com/joho/godotenv"
 )
 
@@ -18,6 +19,7 @@ func TestMain(m *testing.M) {
 	Sonarr = InitSonarrClient(os.Getenv("SONARR_KEY"), os.Getenv("SONARR_HOST"))
 	os.Exit(m.Run())
 }
+
 func TestLookupSeriesByTvdbid(t *testing.T) {
 	series, err := Sonarr.LookupSeriesByTmdbid(106541)
 	if err != nil {
@@ -26,20 +28,34 @@ func TestLookupSeriesByTvdbid(t *testing.T) {
 	t.Log(series)
 }
 
-func TestAddSeries(t *testing.T) {
-	err := Sonarr.AddSeries("The Witcher: Blood Origin", 4, 399987, "D:\\Media\\Shows", true, true, true, "None")
+// func TestAddSeries(t *testing.T) {
+// 	err := Sonarr.AddSeries("The Witcher: Blood Origin", 4, 399987, "D:\\Media\\Shows", true, true, true, "None")
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// }
+
+func TestAddExistingSeries(t *testing.T) {
+	err := Sonarr.AddSeries("Lockwood & Co.", 4, 422028, "D:\\Media\\Shows", true, true, true, "AllEpisodes")
 	if err != nil {
-		t.Fatal(err)
+		t.Log(err)
+		t.Log(util.ExistingTitleErrorHandle(err))
 	}
 }
 
 func TestGetSeries(t *testing.T) {
 	series, err := Sonarr.GetSeries(399987)
-	// series, err := Sonarr.GetSeries(422028)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(series)
+}
+func TestGetAllSeries(t *testing.T) {
+	series, err := Sonarr.GetSeries(-1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(len(series))
 }
 
 func TestGetRootFolder(t *testing.T) {

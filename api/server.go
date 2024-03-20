@@ -6,20 +6,23 @@ import (
 
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/notion"
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/radarr"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/sonarr"
 )
 
 type Server struct {
 	listenAddr string
 	N          *notion.NotionClient
 	R          *radarr.RadarrClient
+	S          *sonarr.SonarrClient
 	Logger     *slog.Logger
 }
 
-func NewServer(listenAddr string, N *notion.NotionClient, R *radarr.RadarrClient, Logger *slog.Logger) *Server {
+func NewServer(listenAddr string, N *notion.NotionClient, R *radarr.RadarrClient, S *sonarr.SonarrClient, Logger *slog.Logger) *Server {
 	return &Server{
 		listenAddr: listenAddr,
 		N:          N,
 		R:          R,
+		S:          S,
 		Logger:     Logger,
 	}
 }
