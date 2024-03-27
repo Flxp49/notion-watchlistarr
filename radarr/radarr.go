@@ -46,17 +46,17 @@ func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (
 }
 
 // getRootFolder Response struct
-type getRootFolderResponse []struct {
+type GetRootFolderResponse []struct {
 	Path string `json:"path"`
 }
 
 // Fetches the rootfolder path set in Radarr
-func (r *RadarrClient) GetRootFolder() (getRootFolderResponse, error) {
+func (r *RadarrClient) GetRootFolder() (GetRootFolderResponse, error) {
 	_, body, err := r.performReq("GET", "/rootfolder", nil)
 	if err != nil {
 		return nil, err
 	}
-	var rf getRootFolderResponse
+	var rf GetRootFolderResponse
 	err = util.ParseJson(body, &rf)
 	if err != nil {
 		return nil, err
@@ -66,18 +66,18 @@ func (r *RadarrClient) GetRootFolder() (getRootFolderResponse, error) {
 }
 
 // getQualityProfile response struct
-type qualityProfileResponse []struct {
+type QualityProfileResponse []struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
 
 // Fetches the quality profiles
-func (r *RadarrClient) GetQualityProfiles() (qualityProfileResponse, error) {
+func (r *RadarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
 	_, body, err := r.performReq("GET", "/qualityprofile", nil)
 	if err != nil {
 		return nil, err
 	}
-	var qp qualityProfileResponse
+	var qp QualityProfileResponse
 	err = util.ParseJson(body, &qp)
 	if err != nil {
 		return nil, err
@@ -105,22 +105,21 @@ func (r *RadarrClient) LookupMovieByImdbid(imdbId string) (LookupMovieByImdbidRe
 	return lMBIR, nil
 }
 
-type addMoviePayload struct {
-	Title            string `json:"title"`
-	QualityProfileId int    `json:"qualityProfileId"`
-	TmdbId           int    `json:"tmdbId"`
-	RootFolderPath   string `json:"rootFolderPath"`
-	Monitored        bool   `json:"monitored"`
-	AddOptions       struct {
-		SearchForMovie bool `json:"searchForMovie"`
-		MonitorTypes   string
-	} `json:"addOptions"`
-}
-
 // Add the movie to Radarr
 //
 // monitor : "MovieOnly" | "MovieandCollection" | "None"
 func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool, monitorProfile string) error {
+	type addMoviePayload struct {
+		Title            string `json:"title"`
+		QualityProfileId int    `json:"qualityProfileId"`
+		TmdbId           int    `json:"tmdbId"`
+		RootFolderPath   string `json:"rootFolderPath"`
+		Monitored        bool   `json:"monitored"`
+		AddOptions       struct {
+			SearchForMovie bool `json:"searchForMovie"`
+			MonitorTypes   string
+		} `json:"addOptions"`
+	}
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
 		SearchForMovie bool `json:"searchForMovie"`
 		MonitorTypes   string
@@ -138,7 +137,7 @@ func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, 
 }
 
 // getMovie response struct
-type getMovieResponse []struct {
+type GetMovieResponse []struct {
 	HasFile          bool   `json:"hasFile"`
 	QualityProfileId int    `json:"qualityProfileId"`
 	Monitored        bool   `json:"monitored"`
@@ -149,7 +148,7 @@ type getMovieResponse []struct {
 }
 
 // Fetch movie details in Radarr
-func (r *RadarrClient) GetMovie(tmdbId int) (getMovieResponse, error) {
+func (r *RadarrClient) GetMovie(tmdbId int) (GetMovieResponse, error) {
 	var query string
 	if tmdbId == -1 {
 		query = "/movie"
@@ -160,7 +159,7 @@ func (r *RadarrClient) GetMovie(tmdbId int) (getMovieResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	var gMR getMovieResponse
+	var gMR GetMovieResponse
 	err = util.ParseJson(body, &gMR)
 	if err != nil {
 		return nil, err
@@ -182,7 +181,8 @@ func (r *RadarrClient) GetQueueDetails(movieID int) (util.GetQueueDetailsRespons
 	return gDSR, nil
 
 }
-// Sets the default profiles and fetches the quality, rootpath profiles from radarr 
+
+// Sets the default profiles and fetches the quality, rootpath profiles from radarr
 func (r *RadarrClient) RadarrDefaults(radarrDefaultRootPath string, radarrDefaultQualityProfile string, radarrDefaultMonitorProfile string, rpid map[string]string, qpid map[string]int) error {
 	//set default monitor
 	if radarrDefaultMonitorProfile == "" {

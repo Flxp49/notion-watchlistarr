@@ -17,16 +17,6 @@ type MovieInfo struct {
 	DeletedFiles bool   `json:"deletedFiles"` //only present when EventType: "MovieDelete"
 }
 
-type SeriesInfo struct {
-	Series struct {
-		Id     int    `json:"id"`
-		ImdbId string `json:"imdbId"`
-		TvdbId int    `json:"tvdbId"`
-	} `json:"series"`
-	EventType    string `json:"eventType"`    //allowed values SeriesAdd|Grab|Download|SeriesDelete
-	DeletedFiles bool   `json:"deletedFiles"` //only present when EventType: "SeriesDelete"
-}
-
 func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(r.Body)
 	r.Body.Close()
@@ -100,6 +90,16 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 		s.Logger.Error("Radarr Webhook", "error", "EventType not valid in payload")
 	}
 
+}
+
+type SeriesInfo struct {
+	Series struct {
+		Id     int    `json:"id"`
+		ImdbId string `json:"imdbId"`
+		TvdbId int    `json:"tvdbId"`
+	} `json:"series"`
+	EventType    string `json:"eventType"`    //allowed values SeriesAdd|Grab|Download|SeriesDelete
+	DeletedFiles bool   `json:"deletedFiles"` //only present when EventType: "SeriesDelete"
 }
 
 func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,5 +1,7 @@
 # dotenv environment variables file
 .env
 
+/bin/
+
 # logs
 *.log

@@ -145,7 +145,7 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 }
 
 // QueryDB Response struct
-type queryDBResponse struct {
+type QueryDBResponse struct {
 	Results []struct {
 		Pgid       string `json:"id"`
 		Properties struct {
@@ -183,7 +183,7 @@ type queryDBResponse struct {
 
 // Query DB for titles to Download where download is checked
 // mtype : Movie || TV Series
-func (n *NotionClient) QueryDB(mtype string) (queryDBResponse, error) {
+func (n *NotionClient) QueryDB(mtype string) (QueryDBResponse, error) {
 	type queryDBPayload struct {
 		Filter struct {
 			Property string `json:"property,omitempty"`
@@ -201,18 +201,18 @@ func (n *NotionClient) QueryDB(mtype string) (queryDBResponse, error) {
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
-		return queryDBResponse{}, err
+		return QueryDBResponse{}, err
 	}
-	var qDB queryDBResponse
+	var qDB QueryDBResponse
 	err = util.ParseJson(body, &qDB)
 	if err != nil {
-		return queryDBResponse{}, err
+		return QueryDBResponse{}, err
 	}
 	return qDB, nil
 }
 
 // QueryDBTmdb Response struct
-type queryDBIdResponse struct {
+type QueryDBIdResponse struct {
 	Results []struct {
 		Pgid string `json:"id"`
 		// Properties struct {
@@ -231,8 +231,8 @@ type queryDBIdResponse struct {
 // Query DB for existing titles by TmdbID
 //
 // id : tmdbid
-func (n *NotionClient) QueryDBTmdb(tmdbId int) (queryDBIdResponse, error) {
-	type QueryDBTmdbPayload struct {
+func (n *NotionClient) QueryDBTmdb(tmdbId int) (QueryDBIdResponse, error) {
+	type queryDBTmdbPayload struct {
 		Filter struct {
 			Property string `json:"property"`
 			Number   struct {
@@ -241,7 +241,7 @@ func (n *NotionClient) QueryDBTmdb(tmdbId int) (queryDBIdResponse, error) {
 		} `json:"filter"`
 		Page_size int `json:"page_size"`
 	}
-	payload := QueryDBTmdbPayload{Filter: struct {
+	payload := queryDBTmdbPayload{Filter: struct {
 		Property string "json:\"property\""
 		Number   struct {
 			Equals int "json:\"equals\""
@@ -252,12 +252,12 @@ func (n *NotionClient) QueryDBTmdb(tmdbId int) (queryDBIdResponse, error) {
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
-		return queryDBIdResponse{}, err
+		return QueryDBIdResponse{}, err
 	}
-	var qDBT queryDBIdResponse
+	var qDBT QueryDBIdResponse
 	err = util.ParseJson(body, &qDBT)
 	if err != nil {
-		return queryDBIdResponse{}, err
+		return QueryDBIdResponse{}, err
 	}
 	return qDBT, nil
 }
@@ -265,7 +265,7 @@ func (n *NotionClient) QueryDBTmdb(tmdbId int) (queryDBIdResponse, error) {
 // Query DB for existing titles by ImdbID
 //
 // id : ImdbID
-func (n *NotionClient) QueryDBImdb(imdbId string) (queryDBIdResponse, error) {
+func (n *NotionClient) QueryDBImdb(imdbId string) (QueryDBIdResponse, error) {
 	type QueryDBImdbPayload struct {
 		Filter struct {
 			Property  string `json:"property"`
@@ -286,12 +286,12 @@ func (n *NotionClient) QueryDBImdb(imdbId string) (queryDBIdResponse, error) {
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
-		return queryDBIdResponse{}, err
+		return QueryDBIdResponse{}, err
 	}
-	var qDBI queryDBIdResponse
+	var qDBI QueryDBIdResponse
 	err = util.ParseJson(body, &qDBI)
 	if err != nil {
-		return queryDBIdResponse{}, err
+		return QueryDBIdResponse{}, err
 	}
 	return qDBI, nil
 }

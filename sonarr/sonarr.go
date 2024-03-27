@@ -46,17 +46,17 @@ func (s *SonarrClient) performReq(method string, endpoint string, data []byte) (
 }
 
 // getRootFolder Response struct
-type getRootFolderResponse []struct {
+type GetRootFolderResponse []struct {
 	Path string `json:"path"`
 }
 
 // Fetches the rootfolder path set in Sonarr
-func (s *SonarrClient) GetRootFolder() (getRootFolderResponse, error) {
+func (s *SonarrClient) GetRootFolder() (GetRootFolderResponse, error) {
 	_, body, err := s.performReq("GET", "/rootfolder", nil)
 	if err != nil {
 		return nil, err
 	}
-	var rf getRootFolderResponse
+	var rf GetRootFolderResponse
 	err = util.ParseJson(body, &rf)
 	if err != nil {
 		return nil, err
@@ -66,18 +66,18 @@ func (s *SonarrClient) GetRootFolder() (getRootFolderResponse, error) {
 }
 
 // getQualityProfile response struct
-type qualityProfileResponse []struct {
+type QualityProfileResponse []struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
 
 // Fetches the quality profiles
-func (s *SonarrClient) GetQualityProfiles() (qualityProfileResponse, error) {
+func (s *SonarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
 	_, body, err := s.performReq("GET", "/qualityprofile", nil)
 	if err != nil {
 		return nil, err
 	}
-	var qPR qualityProfileResponse
+	var qPR QualityProfileResponse
 	err = util.ParseJson(body, &qPR)
 	if err != nil {
 		return nil, err
@@ -106,23 +106,22 @@ func (s *SonarrClient) LookupSeriesByImdbid(imdbId string) (LookupSeriesByImdbid
 	return lSBIR, nil
 }
 
-type addSeriesPayload struct {
-	Title            string `json:"title"`
-	QualityProfileId int    `json:"qualityProfileId"`
-	TvdbId           int    `json:"tvdbId"`
-	RootFolderPath   string `json:"rootFolderPath"`
-	Monitored        bool   `json:"monitored"`
-	SeasonFolder     bool   `json:"seasonFolder"`
-	AddOptions       struct {
-		SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
-		MonitorTypes             string
-	} `json:"addOptions"`
-}
-
 // Add the series to Sonarr
 //
 // monitor : "AllEpisodes" | "FutureEpisodes" | "MissingEpisodes" | "ExistingEpisodes" | "RecentEpisodes" | "PilotEpisode" | "FirstSeason" | "LastSeason" | "MonitorSpecials" | "UnmonitorSpecials" | "None"
 func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int, rootFolderPath string, monitored bool, seasonFolder bool, SearchForMissingEpisodes bool, monitorProfile string) error {
+	type addSeriesPayload struct {
+		Title            string `json:"title"`
+		QualityProfileId int    `json:"qualityProfileId"`
+		TvdbId           int    `json:"tvdbId"`
+		RootFolderPath   string `json:"rootFolderPath"`
+		Monitored        bool   `json:"monitored"`
+		SeasonFolder     bool   `json:"seasonFolder"`
+		AddOptions       struct {
+			SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
+			MonitorTypes             string
+		} `json:"addOptions"`
+	}
 	payload := addSeriesPayload{Title: title, QualityProfileId: qualityProfileId, TvdbId: TvdbId, RootFolderPath: rootFolderPath, Monitored: monitored, SeasonFolder: seasonFolder, AddOptions: struct {
 		SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
 		MonitorTypes             string
@@ -140,7 +139,7 @@ func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int,
 }
 
 // getMovie response struct
-type getSeriesResponse []struct {
+type GetSeriesResponse []struct {
 	ImdbId           string `json:"imdbId"`
 	SeriesID         int    `json:"id"`
 	QualityProfileId int    `json:"qualityProfileId"`
@@ -152,7 +151,7 @@ type getSeriesResponse []struct {
 }
 
 // Fetch series details in Sonarr
-func (s *SonarrClient) GetSeries(tvdbId int) (getSeriesResponse, error) {
+func (s *SonarrClient) GetSeries(tvdbId int) (GetSeriesResponse, error) {
 	var query string
 	if tvdbId == -1 {
 		query = "/series"
@@ -163,7 +162,7 @@ func (s *SonarrClient) GetSeries(tvdbId int) (getSeriesResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	var gSR getSeriesResponse
+	var gSR GetSeriesResponse
 	err = util.ParseJson(body, &gSR)
 	if err != nil {
 		return nil, err
