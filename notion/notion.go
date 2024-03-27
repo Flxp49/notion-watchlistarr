@@ -186,17 +186,41 @@ type QueryDBResponse struct {
 func (n *NotionClient) QueryDB(mtype string) (QueryDBResponse, error) {
 	type queryDBPayload struct {
 		Filter struct {
-			Property string `json:"property,omitempty"`
-			Checkbox struct {
-				Equals bool `json:"equals"`
-			} `json:"checkbox,omitempty"`
+			And []struct {
+				Property string `json:"property"`
+				Checkbox *struct {
+					Equals bool `json:"equals"`
+				} `json:"checkbox,omitempty"`
+				Select *struct {
+					Equals string `json:"equals"`
+				} `json:"select,omitempty"`
+			} `json:"and"`
 		} `json:"filter"`
 		Page_size int `json:"page_size"`
 	}
-	payload := queryDBPayload{}
-	payload.Filter.Property = "Download"
-	payload.Filter.Checkbox.Equals = true
-	payload.Page_size = 5
+	payload := queryDBPayload{Filter: struct {
+		And []struct {
+			Property string "json:\"property\""
+			Checkbox *struct {
+				Equals bool "json:\"equals\""
+			} "json:\"checkbox,omitempty\""
+			Select *struct {
+				Equals string "json:\"equals\""
+			} "json:\"select,omitempty\""
+		} `json:"and"`
+	}{And: []struct {
+		Property string "json:\"property\""
+		Checkbox *struct {
+			Equals bool "json:\"equals\""
+		} "json:\"checkbox,omitempty\""
+		Select *struct {
+			Equals string "json:\"equals\""
+		} "json:\"select,omitempty\""
+	}{{Property: "Download", Checkbox: &struct {
+		Equals bool "json:\"equals\""
+	}{Equals: true}}, {Property: "Type", Select: &struct {
+		Equals string "json:\"equals\""
+	}{Equals: mtype}}}}, Page_size: 5}
 
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)

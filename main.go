@@ -21,7 +21,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 	// init log file
-	f, err := os.OpenFile("notionRadarrSonarrLogFile.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile("notionwatchlistarrsync.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
@@ -50,8 +50,8 @@ func main() {
 
 	// Fetch Radarr & Sonarr info
 	radarrDefaultRootPath := ""
-	radarrDefaultMonitor := ""
 	radarrDefaultQualityProfile := ""
+	radarrDefaultMonitor := ""
 	if os.Getenv("RADARR_DEFAULT_ROOT_PATH") != "" {
 		radarrDefaultRootPath = os.Getenv("RADARR_DEFAULT_ROOT_PATH")
 	}
@@ -62,16 +62,16 @@ func main() {
 		radarrDefaultMonitor = os.Getenv("RADARR_DEFAULT_MONITOR")
 	}
 	sonarrDefaultRootPath := ""
-	sonarrDefaultMonitor := ""
 	sonarrDefaultQualityProfile := ""
+	sonarrDefaultMonitor := ""
 	if os.Getenv("SONARR_DEFAULT_ROOT_PATH") != "" {
-		radarrDefaultRootPath = os.Getenv("SONARR_DEFAULT_ROOT_PATH")
+		sonarrDefaultRootPath = os.Getenv("SONARR_DEFAULT_ROOT_PATH")
 	}
 	if os.Getenv("SONARR_DEFAULT_QUALITY_PROFILE") != "" {
-		radarrDefaultQualityProfile = os.Getenv("SONARR_DEFAULT_QUALITY_PROFILE")
+		sonarrDefaultQualityProfile = os.Getenv("SONARR_DEFAULT_QUALITY_PROFILE")
 	}
 	if os.Getenv("SONARR_DEFAULT_MONITOR") != "" {
-		radarrDefaultMonitor = os.Getenv("SONARR_DEFAULT_MONITOR")
+		sonarrDefaultMonitor = os.Getenv("SONARR_DEFAULT_MONITOR")
 	}
 	ArrSyncinternvalSec := 10
 	WatchlistSyncIntervalHour := 12

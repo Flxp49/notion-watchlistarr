@@ -24,14 +24,14 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 	err := util.ParseJson(body, &movieData)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.Logger.Error("Radarr Webhook", "body", body, "error", err)
+		s.Logger.Error("RadarrWebhook", "body", body, "error", err)
 		return
 	}
-	s.Logger.Info("Radarr Webhook", "data", movieData)
+	s.Logger.Info("RadarrWebhook", "data", movieData)
 	// Check if title exists in the watchlist
 	page, err := s.N.QueryDBImdb(movieData.Movie.ImdbId)
 	if err != nil {
-		s.Logger.Error("Radarr Webhook", "error", err)
+		s.Logger.Error("RadarrWebhook", "error", err)
 		return
 	}
 
@@ -45,7 +45,7 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Not Downloaded", "", "")
 		if err != nil {
-			s.Logger.Error("Radarr Webhook", "Failed to update download status in watchlist", err)
+			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
 		}
 		return
 	}
@@ -55,13 +55,13 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 	//get movie file details
 	movie, err := s.R.GetMovie(movieData.Movie.TmdbId)
 	if err != nil {
-		s.Logger.Error("Radarr Webhook", "error", err)
+		s.Logger.Error("RadarrWebhook", "error", err)
 		return
 	}
 	//get rootpath and qualityprofile properties for notion db
 	movieQualityProp, rootPathProp, err := s.N.GetNotionQualityAndRootProps(movie[0].QualityProfileId, movie[0].RootFolderPath, "Movie")
 	if err != nil {
-		s.Logger.Error("Radarr Webhook", "Failed to fetch notion DB property", err)
+		s.Logger.Error("RadarrWebhook", "Failed to fetch notion DB property", err)
 		return
 	}
 	switch movieData.EventType {
@@ -73,21 +73,21 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Queued", movieQualityProp, rootPathProp)
 		}
 		if err != nil {
-			s.Logger.Error("Radarr Webhook", "Failed to update download status in watchlist", err)
+			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
 		}
 
 	case "Grab":
 		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", movieQualityProp, rootPathProp)
 		if err != nil {
-			s.Logger.Error("Radarr Webhook", "Failed to update download status in watchlist", err)
+			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
 		}
 	case "Download":
 		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", movieQualityProp, rootPathProp)
 		if err != nil {
-			s.Logger.Error("Radarr Webhook", "Failed to update download status in watchlist", err)
+			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
 		}
 	default:
-		s.Logger.Error("Radarr Webhook", "error", "EventType not valid in payload")
+		s.Logger.Error("RadarrWebhook", "error", "EventType not valid in payload")
 	}
 
 }
@@ -109,14 +109,14 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 	err := util.ParseJson(body, &seriesData)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		s.Logger.Error("Sonarr Webhook", "body", body, "error", err)
+		s.Logger.Error("SonarrWebhook", "body", body, "error", err)
 		return
 	}
-	s.Logger.Info("Sonarr Webhook", "data", seriesData)
+	s.Logger.Info("SonarrWebhook", "data", seriesData)
 	// check if title exists in watchlist db
 	page, err := s.N.QueryDBImdb(seriesData.Series.ImdbId)
 	if err != nil {
-		s.Logger.Error("Sonarr Webhook", "error", err)
+		s.Logger.Error("SonarrWebhook", "error", err)
 		return
 	}
 	if len(page.Results) == 0 {
@@ -129,7 +129,7 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Not Downloaded", "", "")
 		if err != nil {
-			s.Logger.Error("Sonarr Webhook", "Failed to update download status in watchlist", err)
+			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)
 		}
 		return
 	}
@@ -139,13 +139,13 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 
 	series, err := s.S.GetSeries(seriesData.Series.TvdbId)
 	if err != nil {
-		s.Logger.Error("Sonarr Webhook", "body", body, "error", err)
+		s.Logger.Error("SonarrWebhook", "body", body, "error", err)
 		return
 	}
 	//get rootpath and qualityprofile properties for notion db
 	qualityProp, rootPathProp, err := s.N.GetNotionQualityAndRootProps(series[0].QualityProfileId, series[0].RootFolderPath, "TV Series")
 	if err != nil {
-		s.Logger.Error("Sonarr Webhook", "Failed to fetch notion DB property", err)
+		s.Logger.Error("SonarrWebhook", "Failed to fetch notion DB property", err)
 		return
 	}
 	switch seriesData.EventType {
@@ -157,12 +157,12 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Queued", qualityProp, rootPathProp)
 		}
 		if err != nil {
-			s.Logger.Error("Sonarr Webhook", "Failed to update download status in watchlist", err)
+			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)
 		}
 	case "Grab":
 		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", qualityProp, rootPathProp)
 		if err != nil {
-			s.Logger.Error("Sonarr Webhook", "Failed to update download status in watchlist", err)
+			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)
 		}
 	case "Download":
 		// check if all episodes were downloaded or not
@@ -172,10 +172,10 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", qualityProp, rootPathProp)
 		}
 		if err != nil {
-			s.Logger.Error("Sonarr Webhook", "Failed to update download status in watchlist", err)
+			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)
 		}
 	default:
-		s.Logger.Error("Sonarr Webhook", "error", "EventType not valid in payload")
+		s.Logger.Error("SonarrWebhook", "error", "EventType not valid in payload")
 	}
 
 }
