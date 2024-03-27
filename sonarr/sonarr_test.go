@@ -21,19 +21,19 @@ func TestMain(m *testing.M) {
 }
 
 func TestLookupSeriesByTvdbid(t *testing.T) {
-	series, err := Sonarr.LookupSeriesByTmdbid(106541)
+	series, err := Sonarr.LookupSeriesByImdbid("")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(series)
 }
 
-// func TestAddSeries(t *testing.T) {
-// 	err := Sonarr.AddSeries("The Witcher: Blood Origin", 4, 399987, "D:\\Media\\Shows", true, true, true, "None")
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// }
+func TestAddSeries(t *testing.T) {
+	err := Sonarr.AddSeries("The Witcher: Blood Origin", 4, 399987, "D:\\Media\\Shows", true, true, true, "None")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestAddExistingSeries(t *testing.T) {
 	err := Sonarr.AddSeries("Lockwood & Co.", 4, 422028, "D:\\Media\\Shows", true, true, true, "AllEpisodes")
@@ -50,12 +50,22 @@ func TestGetSeries(t *testing.T) {
 	}
 	t.Log(series)
 }
+
 func TestGetAllSeries(t *testing.T) {
 	series, err := Sonarr.GetSeries(-1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(len(series))
+}
+
+func TestGetQueueDetails(t *testing.T) {
+	//the witcher blood moon
+	downloadStatus, err := Sonarr.GetQueueDetails(36)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(downloadStatus)
 }
 
 func TestGetRootFolder(t *testing.T) {

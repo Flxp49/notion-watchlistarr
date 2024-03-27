@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strings"
 
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
 )
@@ -113,10 +114,9 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 		} `json:"properties"`
 	}
 	payload := updateDownloadStatus{}
+	payload.Properties.DStatus.Select.Name = sMap[status].name
+	payload.Properties.Download.Checkbox = download
 	if status != "Error" && status != "Not Downloaded" {
-		payload.Properties.Download.Checkbox = true
-		payload.Properties.DStatus.Select.Name = sMap[status].name
-
 		payload.Properties.QualityProfile = struct {
 			Select *struct {
 				Name string "json:\"name\""
@@ -132,9 +132,6 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 		}{Select: &struct {
 			Name string "json:\"name\""
 		}{Name: rootPath}}
-	} else {
-		payload.Properties.Download.Checkbox = false
-		payload.Properties.DStatus.Select.Name = sMap[status].name
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -152,6 +149,11 @@ type queryDBResponse struct {
 	Results []struct {
 		Pgid       string `json:"id"`
 		Properties struct {
+			Imdbid struct {
+				Rich_text []struct {
+					Plain_text string `json:"plain_text"`
+				} `json:"rich_text"`
+			} `json:"IMDb ID"`
 			Tmdbid struct {
 				Number int `json:"number"`
 			} `json:"ID"`
@@ -179,88 +181,22 @@ type queryDBResponse struct {
 	} `json:"results"`
 }
 
-// Query DB for titles to Download where download is checked and download status is "Not Downloaded" or Empty
-//
+// Query DB for titles to Download where download is checked
 // mtype : Movie || TV Series
 func (n *NotionClient) QueryDB(mtype string) (queryDBResponse, error) {
-	d := "Download"
-	nd := "Not Downloaded"
-	ndb := true
-	e := "Error"
-	nt := "Type"
 	type queryDBPayload struct {
 		Filter struct {
-			And []struct {
-				Property *string `json:"property,omitempty"`
-				Checkbox *struct {
-					Equals bool `json:"equals"`
-				} `json:"checkbox,omitempty"`
-				Select *struct {
-					Equals string `json:"equals"`
-				} `json:"select,omitempty"`
-				Or []struct {
-					Property string `json:"property"`
-					Select   struct {
-						Equals   *string `json:"equals,omitempty"`
-						Is_empty *bool   `json:"is_empty,omitempty"`
-					} `json:"select"`
-				} `json:"or,omitempty"`
-			} `json:"and"`
+			Property string `json:"property,omitempty"`
+			Checkbox struct {
+				Equals bool `json:"equals"`
+			} `json:"checkbox,omitempty"`
 		} `json:"filter"`
 		Page_size int `json:"page_size"`
 	}
-	payload := queryDBPayload{Filter: struct {
-		And []struct {
-			Property *string "json:\"property,omitempty\""
-			Checkbox *struct {
-				Equals bool "json:\"equals\""
-			} "json:\"checkbox,omitempty\""
-			Select *struct {
-				Equals string "json:\"equals\""
-			} "json:\"select,omitempty\""
-			Or []struct {
-				Property string "json:\"property\""
-				Select   struct {
-					Equals   *string "json:\"equals,omitempty\""
-					Is_empty *bool   "json:\"is_empty,omitempty\""
-				} "json:\"select\""
-			} "json:\"or,omitempty\""
-		} "json:\"and\""
-	}{And: []struct {
-		Property *string "json:\"property,omitempty\""
-		Checkbox *struct {
-			Equals bool "json:\"equals\""
-		} "json:\"checkbox,omitempty\""
-		Select *struct {
-			Equals string "json:\"equals\""
-		} "json:\"select,omitempty\""
-		Or []struct {
-			Property string "json:\"property\""
-			Select   struct {
-				Equals   *string "json:\"equals,omitempty\""
-				Is_empty *bool   "json:\"is_empty,omitempty\""
-			} "json:\"select\""
-		} "json:\"or,omitempty\""
-	}{{Property: &d, Checkbox: &struct {
-		Equals bool "json:\"equals\""
-	}{Equals: true}}, {Property: &nt, Select: &struct {
-		Equals string "json:\"equals\""
-	}{Equals: mtype}}, {Or: []struct {
-		Property string "json:\"property\""
-		Select   struct {
-			Equals   *string "json:\"equals,omitempty\""
-			Is_empty *bool   "json:\"is_empty,omitempty\""
-		} "json:\"select\""
-	}{{Property: "Download Status", Select: struct {
-		Equals   *string "json:\"equals,omitempty\""
-		Is_empty *bool   "json:\"is_empty,omitempty\""
-	}{Equals: &nd}}, {Property: "Download Status", Select: struct {
-		Equals   *string "json:\"equals,omitempty\""
-		Is_empty *bool   "json:\"is_empty,omitempty\""
-	}{Is_empty: &ndb}}, {Property: "Download Status", Select: struct {
-		Equals   *string "json:\"equals,omitempty\""
-		Is_empty *bool   "json:\"is_empty,omitempty\""
-	}{Equals: &e}}}}}}, Page_size: 5}
+	payload := queryDBPayload{}
+	payload.Filter.Property = "Download"
+	payload.Filter.Checkbox.Equals = true
+	payload.Page_size = 5
 
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
@@ -303,15 +239,16 @@ func (n *NotionClient) QueryDBTmdb(tmdbId int) (queryDBIdResponse, error) {
 				Equals int `json:"equals"`
 			} `json:"number"`
 		} `json:"filter"`
+		Page_size int `json:"page_size"`
 	}
-	payload := QueryDBTmdbPayload{struct {
-		Property string `json:"property"`
+	payload := QueryDBTmdbPayload{Filter: struct {
+		Property string "json:\"property\""
 		Number   struct {
-			Equals int `json:"equals"`
-		} `json:"number"`
-	}{Property: "ID", Number: struct {
-		Equals int `json:"equals"`
-	}{Equals: tmdbId}}}
+			Equals int "json:\"equals\""
+		} "json:\"number\""
+	}{Number: struct {
+		Equals int "json:\"equals\""
+	}{Equals: tmdbId}}, Page_size: 5}
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
@@ -336,15 +273,16 @@ func (n *NotionClient) QueryDBImdb(imdbId string) (queryDBIdResponse, error) {
 				Equals string `json:"equals"`
 			} `json:"rich_text"`
 		} `json:"filter"`
+		Page_size int `json:"page_size"`
 	}
-	payload := QueryDBImdbPayload{struct {
+	payload := QueryDBImdbPayload{Filter: struct {
 		Property  string `json:"property"`
 		Rich_text struct {
 			Equals string `json:"equals"`
 		} `json:"rich_text"`
 	}{Property: "IMDb ID", Rich_text: struct {
 		Equals string `json:"equals"`
-	}{Equals: imdbId}}}
+	}{Equals: imdbId}}, Page_size: 5}
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
@@ -440,29 +378,38 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 	return nil
 }
 
-func (n *NotionClient) GetNotionQualityProfileProp(qualityProfile int) (string, error) {
+func (n *NotionClient) GetNotionQualityAndRootProps(qualityProfile int, rootPath string, mtype string) (string, string, error) {
+	qualityProfileProp := ""
+	rootPathProp := ""
 	for key, val := range n.Qpid {
-		if val == qualityProfile {
-			return key, nil
+		if val == qualityProfile && strings.Contains(key, mtype) {
+			qualityProfileProp = key
+			break
 		}
 	}
-	return "", errors.New("invalid qpid value passed")
-}
-func (n *NotionClient) GetNotionRootPathProp(rootPath string) (string, error) {
+	if qualityProfileProp == "" {
+		return "", "", errors.New("invalid qpid value passed")
+	}
 	for key, val := range n.Rpid {
-		if filepath.Clean(val) == filepath.Clean(rootPath) {
-			return key, nil
+		if filepath.Clean(val) == filepath.Clean(rootPath) && strings.Contains(key, mtype) {
+			rootPathProp = key
+			break
 		}
 	}
-	return "", errors.New("invalid rpid value passed")
+	if rootPathProp == "" {
+		return "", "", errors.New("invalid rpid value passed")
+	}
+
+	return qualityProfileProp, rootPathProp, nil
 }
-func (n *NotionClient) GetNotionMonitorProp(monitorProfile string) (string, error) {
+
+func (n *NotionClient) GetNotionMonitorProp(monitorProfile string, mtype string) (string, error) {
 	for key, val := range MonitorProfiles {
-		if val == monitorProfile {
+		if val == monitorProfile && strings.Contains(key, mtype) {
 			return key, nil
 		}
 	}
-	return "", errors.New("invalid monitorProfile value passed")
+	return "", errors.New("invalid monitorProfile id value passed")
 }
 
 func InitNotionClient(username string, secret string, dbid string) *NotionClient {

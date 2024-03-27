@@ -86,24 +86,24 @@ func (s *SonarrClient) GetQualityProfiles() (qualityProfileResponse, error) {
 
 }
 
-type LookupSeriesByTvdbidResponse []struct {
+type LookupSeriesByImdbidResponse []struct {
 	TvdbId int `json:"tvdbId"`
 	// ImdbId string `json:"imdbId"`
 }
 
 // lookup series via Sonarr to get tvdbid
-func (s *SonarrClient) LookupSeriesByTmdbid(tmdbId int) (LookupSeriesByTvdbidResponse, error) {
+func (s *SonarrClient) LookupSeriesByImdbid(imdbId string) (LookupSeriesByImdbidResponse, error) {
 
-	_, body, err := s.performReq("GET", fmt.Sprintf("/series/lookup?term=tmdbId:%d", tmdbId), nil)
+	_, body, err := s.performReq("GET", fmt.Sprintf("/series/lookup?term=imdbId:%s", imdbId), nil)
 	if err != nil {
 		return nil, err
 	}
-	var lSBTR LookupSeriesByTvdbidResponse
-	err = util.ParseJson(body, &lSBTR)
+	var lSBIR LookupSeriesByImdbidResponse
+	err = util.ParseJson(body, &lSBIR)
 	if err != nil {
 		return nil, err
 	}
-	return lSBTR, nil
+	return lSBIR, nil
 }
 
 type addSeriesPayload struct {
@@ -142,6 +142,7 @@ func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int,
 // getMovie response struct
 type getSeriesResponse []struct {
 	ImdbId           string `json:"imdbId"`
+	SeriesID         int    `json:"id"`
 	QualityProfileId int    `json:"qualityProfileId"`
 	Monitored        bool   `json:"monitored"`
 	RootFolderPath   string `json:"rootFolderPath"`
@@ -170,6 +171,22 @@ func (s *SonarrClient) GetSeries(tvdbId int) (getSeriesResponse, error) {
 	return gSR, nil
 }
 
+// Fetch movie download status
+func (s *SonarrClient) GetQueueDetails(seriesId int) (util.GetQueueDetailsResponse, error) {
+	_, body, err := s.performReq("GET", fmt.Sprintf("/queue?id=%d", seriesId), nil)
+	if err != nil {
+		return util.GetQueueDetailsResponse{}, err
+	}
+	var gDSR util.GetQueueDetailsResponse
+	err = util.ParseJson(body, &gDSR)
+	if err != nil {
+		return util.GetQueueDetailsResponse{}, err
+	}
+	return gDSR, nil
+
+}
+
+// Sets the default profiles and fetches the quality, rootpath profiles from sonarr
 func (s *SonarrClient) SonarrDefaults(sonarrDefaultRootPath string, sonarrDefaultQualityProfile string, sonarrDefaultMonitorProfile string, rpid map[string]string, qpid map[string]int) error {
 	//set default monitor
 	if sonarrDefaultMonitorProfile == "" {

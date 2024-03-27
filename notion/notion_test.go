@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestGetNotionMonitorProp(t *testing.T) {
-	prop, err := Notion.GetNotionMonitorProp("MovieandCollection")
+	prop, err := Notion.GetNotionMonitorProp("MovieandCollection", "Movie")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,8 @@ func TestGetNotionMonitorProp(t *testing.T) {
 }
 
 func TestQueryDB(t *testing.T) {
-	series, err := Notion.QueryDB("TV Series")
+	// series, err := Notion.QueryDB("TV Series")
+	series, err := Notion.QueryDB("Movie")
 	if err != nil {
 		t.Fatal(err)
 	}

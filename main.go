@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/api"
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/notion"
@@ -28,7 +29,7 @@ func main() {
 
 	var programLevel = new(slog.LevelVar)
 	Logger := slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: programLevel}))
-	if os.Getenv("LOG_LEVEL") != "" && os.Getenv("LOG_LEVEL") == "1" {
+	if os.Getenv("LOG_LEVEL") != "" || os.Getenv("LOG_LEVEL") == "0" {
 		programLevel.Set(slog.LevelDebug)
 	} else {
 		programLevel.Set(slog.LevelError)
@@ -72,6 +73,14 @@ func main() {
 	if os.Getenv("SONARR_DEFAULT_MONITOR") != "" {
 		radarrDefaultMonitor = os.Getenv("SONARR_DEFAULT_MONITOR")
 	}
+	ArrSyncinternvalSec := 10
+	WatchlistSyncIntervalHour := 12
+	if os.Getenv("ARRSYNC_INTERVAL_SEC") != "" {
+		ArrSyncinternvalSec, _ = strconv.Atoi(os.Getenv("ARRSYNC_INTERVAL_SEC"))
+	}
+	if os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR") != "" {
+		WatchlistSyncIntervalHour, _ = strconv.Atoi(os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR"))
+	}
 
 	err = R.RadarrDefaults(radarrDefaultRootPath, radarrDefaultQualityProfile, radarrDefaultMonitor, Rpid, Qpid)
 	if err != nil {
@@ -92,13 +101,16 @@ func main() {
 		}
 		Logger.Info("Database updated with new properties")
 		if radarrStart {
-			go routine.RadarrSync(Logger, N, R)
+			go routine.RadarrSync(Logger, N, R, time.Duration(ArrSyncinternvalSec))
+			go routine.RadarrWatchlistSync(Logger, N, R, time.Duration(WatchlistSyncIntervalHour))
 		}
 		if sonarrStart {
-			go routine.SonarrSync(Logger, N, S)
+			go routine.SonarrSync(Logger, N, S, time.Duration(ArrSyncinternvalSec))
+			go routine.SonarrWatchlistSync(Logger, N, S, time.Duration(WatchlistSyncIntervalHour))
 		}
-
-		// todo: init watchlist sync
+	} else {
+		Logger.Error("Failed to start radarr and sonarr, terminating app")
+		os.Exit(1)
 	}
 
 	PORT := os.Getenv("PORT")
@@ -109,7 +121,7 @@ func main() {
 	Server := api.NewServer(PORT, N, R, S, Logger)
 	err = Server.Start()
 	if err != nil {
-		Logger.Error(fmt.Sprintf("Failed to listen on PORT %s", PORT), "error", err)
+		Logger.Error("Failed to listen on PORT", PORT, "error", err)
 		os.Exit(1)
 	}
 }

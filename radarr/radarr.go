@@ -86,6 +86,25 @@ func (r *RadarrClient) GetQualityProfiles() (qualityProfileResponse, error) {
 
 }
 
+type LookupMovieByImdbidResponse struct {
+	Tmdbid int `json:"tmdbId"`
+}
+
+// lookup movie via Radarr to get tmdbid
+func (r *RadarrClient) LookupMovieByImdbid(imdbId string) (LookupMovieByImdbidResponse, error) {
+
+	_, body, err := r.performReq("GET", fmt.Sprintf("/movie/lookup/imdb?imdbId=%s", imdbId), nil)
+	if err != nil {
+		return LookupMovieByImdbidResponse{}, err
+	}
+	var lMBIR LookupMovieByImdbidResponse
+	err = util.ParseJson(body, &lMBIR)
+	if err != nil {
+		return LookupMovieByImdbidResponse{}, err
+	}
+	return lMBIR, nil
+}
+
 type addMoviePayload struct {
 	Title            string `json:"title"`
 	QualityProfileId int    `json:"qualityProfileId"`
@@ -93,8 +112,8 @@ type addMoviePayload struct {
 	RootFolderPath   string `json:"rootFolderPath"`
 	Monitored        bool   `json:"monitored"`
 	AddOptions       struct {
-		SearchForMovie bool   `json:"searchForMovie"`
-		Monitor        string `json:"monitor"`
+		SearchForMovie bool `json:"searchForMovie"`
+		MonitorTypes   string
 	} `json:"addOptions"`
 }
 
@@ -103,9 +122,9 @@ type addMoviePayload struct {
 // monitor : "MovieOnly" | "MovieandCollection" | "None"
 func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool, monitorProfile string) error {
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
-		SearchForMovie bool   `json:"searchForMovie"`
-		Monitor        string `json:"monitor"`
-	}{SearchForMovie: searchForMovie, Monitor: monitorProfile}}
+		SearchForMovie bool `json:"searchForMovie"`
+		MonitorTypes   string
+	}{SearchForMovie: searchForMovie, MonitorTypes: monitorProfile}}
 
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -124,6 +143,9 @@ type getMovieResponse []struct {
 	QualityProfileId int    `json:"qualityProfileId"`
 	Monitored        bool   `json:"monitored"`
 	RootFolderPath   string `json:"rootFolderPath"`
+	ImdbId           string `json:"imdbId"`
+	TmdbId           int    `json:"tmdbId"`
+	MovieID          int    `json:"id"`
 }
 
 // Fetch movie details in Radarr
@@ -146,6 +168,21 @@ func (r *RadarrClient) GetMovie(tmdbId int) (getMovieResponse, error) {
 	return gMR, nil
 }
 
+// Fetch movie download status
+func (r *RadarrClient) GetQueueDetails(movieID int) (util.GetQueueDetailsResponse, error) {
+	_, body, err := r.performReq("GET", fmt.Sprintf("/queue?id=%d", movieID), nil)
+	if err != nil {
+		return util.GetQueueDetailsResponse{}, err
+	}
+	var gDSR util.GetQueueDetailsResponse
+	err = util.ParseJson(body, &gDSR)
+	if err != nil {
+		return util.GetQueueDetailsResponse{}, err
+	}
+	return gDSR, nil
+
+}
+// Sets the default profiles and fetches the quality, rootpath profiles from radarr 
 func (r *RadarrClient) RadarrDefaults(radarrDefaultRootPath string, radarrDefaultQualityProfile string, radarrDefaultMonitorProfile string, rpid map[string]string, qpid map[string]int) error {
 	//set default monitor
 	if radarrDefaultMonitorProfile == "" {

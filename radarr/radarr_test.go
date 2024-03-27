@@ -20,12 +20,20 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-//	func TestAddMovie(t *testing.T) {
-//		err := Radarr.AddMovie("American Psycho", 4, 1359, "D:\\Media\\Movies", true, true, "MovieandCollection")
-//		if err != nil {
-//			t.Fatal(err)
-//		}
-//	}
+func TestGetQueueDetails(t *testing.T) {
+	downloadStatus, err := Radarr.GetQueueDetails(126)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(downloadStatus)
+}
+
+func TestAddMovie(t *testing.T) {
+	err := Radarr.AddMovie("American Psycho", 4, 1359, "D:\\Media\\Movies", true, true, "MovieandCollection")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 func TestAddExistingMovie(t *testing.T) {
 	err := Radarr.AddMovie("Finch", 4, 522402, "D:\\Media\\Movies", true, true, "MovieandCollection")
 	if err != nil {
