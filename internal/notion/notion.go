@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/util"
 )
 
 //	type monitorMap struct {

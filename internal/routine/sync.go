@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/notion"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/radarr"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/sonarr"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/notion"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/radarr"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/sonarr"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/util"
 )
 
 // This function fetches movies set to download from the notion watchlist

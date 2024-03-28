@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/api"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/notion"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/radarr"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/routine"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/sonarr"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/notion"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/radarr"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/routine"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/server"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/sonarr"
 	"github.com/joho/godotenv"
 )
 
@@ -118,7 +118,7 @@ func main() {
 		PORT = "7879"
 	}
 
-	Server := api.NewServer(PORT, N, R, S, Logger)
+	Server := server.NewServer(PORT, N, R, S, Logger)
 	err = Server.Start()
 	if err != nil {
 		Logger.Error("Failed to listen on PORT", PORT, "error", err)

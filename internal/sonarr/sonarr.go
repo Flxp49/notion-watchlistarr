@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/util"
 )
 
 type SonarrClient struct {

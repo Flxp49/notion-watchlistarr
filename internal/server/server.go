@@ -1,12 +1,12 @@
-package api
+package server
 
 import (
 	"log/slog"
 	"net/http"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/notion"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/radarr"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/sonarr"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/notion"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/radarr"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/sonarr"
 )
 
 type Server struct {

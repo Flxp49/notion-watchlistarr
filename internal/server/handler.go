@@ -1,10 +1,10 @@
-package api
+package server
 
 import (
 	"io"
 	"net/http"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/util"
+	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/util"
 )
 
 type MovieInfo struct {
