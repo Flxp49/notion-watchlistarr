@@ -146,7 +146,7 @@ type GetSeriesResponse []struct {
 	Monitored        bool   `json:"monitored"`
 	RootFolderPath   string `json:"rootFolderPath"`
 	Statistics       struct {
-		PercentOfEpisodes int `json:"percentOfEpisodes"`
+		PercentOfEpisodes float32 `json:"percentOfEpisodes"`
 	} `json:"statistics"`
 }
 
