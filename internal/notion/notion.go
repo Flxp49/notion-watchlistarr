@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strings"
 
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/util"
@@ -415,7 +414,7 @@ func (n *NotionClient) GetNotionQualityAndRootProps(qualityProfile int, rootPath
 		return "", "", errors.New("invalid qpid value passed")
 	}
 	for key, val := range n.Rpid {
-		if filepath.Clean(val) == filepath.Clean(rootPath) && strings.Contains(key, mtype) {
+		if util.CheckSamePath(val, rootPath) && strings.Contains(key, mtype) {
 			rootPathProp = key
 			break
 		}

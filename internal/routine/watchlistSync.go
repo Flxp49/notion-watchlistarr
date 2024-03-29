@@ -39,7 +39,7 @@ start:
 		qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(movie.QualityProfileId, movie.RootFolderPath, "Movie")
 		if err != nil {
 			Logger.Error("RadarrWatchlistSync", "Failed to fetch notion DB property", err)
-			continue
+			goto m
 		}
 		if movie.HasFile {
 			err = N.UpdateDownloadStatus(watchlistMovie.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp)
@@ -101,7 +101,7 @@ start:
 		qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(serie.QualityProfileId, serie.RootFolderPath, "TV Series")
 		if err != nil {
 			Logger.Error("SonarrWatchlistSync", "Failed to fetch notion DB property", err)
-			continue
+			goto m
 		}
 		if serie.Statistics.PercentOfEpisodes == 100 {
 			err = N.UpdateDownloadStatus(watchlistSeries.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp)

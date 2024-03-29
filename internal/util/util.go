@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 type RequestError struct {
@@ -61,4 +62,14 @@ func GetDownloadStatus(download GetQueueDetailsResponse) (string, error) {
 			return "Downloading", nil
 		}
 	}
+}
+
+func CheckSamePath(p1 string, p2 string) bool {
+	f1 := strings.ReplaceAll(p1, "/", "")
+	f1 = strings.ReplaceAll(f1, "\\", "")
+	f1 = strings.ToLower(f1)
+	f2 := strings.ReplaceAll(p2, "/", "")
+	f2 = strings.ReplaceAll(f2, "\\", "")
+	f2 = strings.ToLower(f2)
+	return f1 == f2
 }

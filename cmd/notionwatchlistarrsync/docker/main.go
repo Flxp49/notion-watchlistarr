@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"log/slog"
 	"os"
 	"strconv"
@@ -12,21 +11,9 @@ import (
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/routine"
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/sonarr"
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/server"
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	// init log file
-	f, err := os.OpenFile("notionwatchlistarrsync.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	defer f.Close()
-
 	var programLevel = new(slog.LevelVar)
 	Logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: programLevel}))
 	if os.Getenv("LOG_LEVEL") != "" || os.Getenv("LOG_LEVEL") == "0" {
@@ -82,7 +69,7 @@ func main() {
 		WatchlistSyncIntervalHour, _ = strconv.Atoi(os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR"))
 	}
 
-	err = R.RadarrDefaults(radarrDefaultRootPath, radarrDefaultQualityProfile, radarrDefaultMonitor, Rpid, Qpid)
+	err := R.RadarrDefaults(radarrDefaultRootPath, radarrDefaultQualityProfile, radarrDefaultMonitor, Rpid, Qpid)
 	if err != nil {
 		Logger.Error("Failed to fetch Sonarr defaults, Radarr routine not initialized", "Error", err)
 		radarrStart = false
