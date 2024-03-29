@@ -100,11 +100,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	PORT := os.Getenv("PORT")
-	if PORT == "" {
-		PORT = "7879"
-	}
-
+	PORT := "7879"
 	Server := server.NewServer(PORT, N, R, S, Logger)
 	err = Server.Start()
 	if err != nil {
