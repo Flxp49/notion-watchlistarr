@@ -121,7 +121,7 @@ func main() {
 	Server := server.NewServer(PORT, N, R, S, Logger)
 	err = Server.Start()
 	if err != nil {
-		Logger.Error("Failed to listen on PORT", PORT, "error", err)
+		Logger.Error("Server failed to listen", "Error", err)
 		os.Exit(1)
 	}
 }
