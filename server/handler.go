@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -59,7 +58,6 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 	time.AfterFunc(time.Second*5, func() {
 		//get movie file details
 		movie, err := s.R.GetMovie(movieData.Movie.TmdbId)
-		fmt.Println(movie)
 		if err != nil {
 			s.Logger.Error("RadarrWebhook", "error", err)
 			return
