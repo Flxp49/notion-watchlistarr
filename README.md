@@ -61,7 +61,7 @@ The executable requires a .env file in the same directory from which it reads th
 Env variables can be setup while spinning up the docker image. You can either set them via CLI individually or pass an env file.  
 Ex: `docker run --env-file D:/path/to/env-file/.env -d -p 7879:7879 notionwatchlistarrsync:v0.1`  
 env file is the same as the one specified above (Executable Section) EXCLUDING `PORT`
->**NOTE** the host for radarr and sonarr may have to be `http://localhost:XXXX` instead of `http://host.docker.internal:XXXX`
+>**NOTE** the host for radarr and sonarr may have to be `http://host.docker.internal:XXXX` instead of `http://localhost:XXXX`
 
 # Usage
 The app on launch adds the following properties with values to the Notion database.
