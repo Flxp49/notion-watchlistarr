@@ -68,15 +68,15 @@ The app on launch adds the following properties with values to the Notion databa
 
 | Property Name | Property Type |
 | -------- | -------- |  
-| Download | Checkbox | 
-| Download Status | Select | 
-| Quality Profile | Select | 
-| Root Folder | Select | 
-| Monitor | Select | 
+| `Download` | Checkbox | 
+| `Download Status` | Select | 
+| `Quality Profile` | Select | 
+| `Root Folder` | Select | 
+| `Monitor` | Select | 
 
 - `Quality Profile` is populated with the quality profiles fetched from Radarr and Sonarr as options.  
 - `Root Folder` is populated with the root paths fetched from Radarr and Sonarr as options.  
-- `Monitor` is populated with the following options:
+- `Monitor` is populated with the following options:  
 `TV Series: All Episodes`  
 `TV Series: Future Episodes`  
 `TV Series: Missing Episodes`  
