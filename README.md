@@ -101,6 +101,7 @@ The options for the respective properties can be used to set the Quality Profile
 ### Download
 To download, Select the required profiles and then 'check' the Download property of the title.  
 ![notionwatchlistarr1](https://github.com/Flxp49/notion-watchlist-radarr-sonarr/assets/63506727/dbe994a5-1de0-4cfb-8c93-bae495e1a086)  
+  
 Here, if `Quality Profile` `Root Folder` `Monitor` are not chosen before checking `Download`, the default values will be used instead.  
 ![notionwatchlistarr2](https://github.com/Flxp49/notion-watchlist-radarr-sonarr/assets/63506727/9375bfe5-8aff-4db8-b83c-0588c4625832)  
 
