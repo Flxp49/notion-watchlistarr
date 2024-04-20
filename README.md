@@ -2,8 +2,8 @@
 Download media (via Radarr & Sonarr) directly from your watchlist on Notion.
 
 # Prerequisites
-- Radarr
-- Sonarr
+- [Radarr](https://github.com/Radarr/Radarr)
+- [Sonarr](https://github.com/Sonarr/Sonarr)
 - The script requires the following properties to exist in your watchlist database on Notion
   | Property Name (CASE SENSITIVE) | Property Type | Value |
   | -------- | -------- | -------- | 
