@@ -122,11 +122,15 @@ start:
 	Logger.Info("SonarrSync", "Status", "Fetched titles from DB", "No of titles fetched", len(data.Results))
 	for _, m := range data.Results {
 		tvdbid, err := S.LookupSeriesByImdbid(m.Properties.Imdbid.Rich_text[0].Plain_text)
-		if err != nil || len(tvdbid) == 0 {
+		if err != nil {
+			Logger.Warn("SonarrSync", "Failed to fetch tvdbid via sonarr of imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
 			// use secondary search
-			Logger.Error("SonarrSync", "Failed to fetch tvdbid via sonarr of imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
-			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
-			continue
+			tvdbid, err = util.GetSeriesByRemoteID(m.Properties.Imdbid.Rich_text[0].Plain_text)
+			if err != nil {
+				Logger.Error("SonarrSync", "Failed to fetch tvdbid of imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
+				N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
+				continue
+			}
 		}
 		// set monitor property
 		if m.Properties.MonitorProfile.Select.Name == "" {
@@ -155,7 +159,7 @@ start:
 			m.Properties.QualityProfile.Select.Name = qualityProp
 		}
 		Logger.Info("SonarrSync", "Status", "Adding Title", "Title", m.Properties.Name.Title[0].Plain_text)
-		err = S.AddSeries(m.Properties.Name.Title[0].Plain_text, N.Qpid[m.Properties.QualityProfile.Select.Name], tvdbid[0].TvdbId, N.Rpid[m.Properties.RootFolder.Select.Name], true, true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name]) //todo
+		err = S.AddSeries(m.Properties.Name.Title[0].Plain_text, N.Qpid[m.Properties.QualityProfile.Select.Name], tvdbid, N.Rpid[m.Properties.RootFolder.Select.Name], true, true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name]) //todo
 		//check for exists error (series already exists in radarr)
 		exists, err := util.ExistingTitleErrorHandle(err)
 		if err != nil {
@@ -170,7 +174,7 @@ start:
 		// series exists
 		// check if downloaded or not
 		//? make a put request to update the movie?
-		series, err := S.GetSeries(tvdbid[0].TvdbId)
+		series, err := S.GetSeries(tvdbid)
 		if err != nil {
 			Logger.Error("SonarrSync", "Failed to fetch movie details from sonarr", err)
 			continue

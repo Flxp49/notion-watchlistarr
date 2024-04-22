@@ -11,7 +11,7 @@ import (
 var Notion *NotionClient
 
 func TestMain(m *testing.M) {
-	err := godotenv.Load("../../cmd/notionwatchlistarrsync/.env")
+	err := godotenv.Load("../../cmd/notionwatchlistarr/.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}

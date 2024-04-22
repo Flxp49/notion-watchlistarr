@@ -12,7 +12,7 @@ import (
 var Sonarr *SonarrClient
 
 func TestMain(m *testing.M) {
-	err := godotenv.Load("../../cmd/notionwatchlistarrsync/.env")
+	err := godotenv.Load("../../cmd/notionwatchlistarr/.env")
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -81,4 +81,11 @@ func TestGetQualityProfiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(qualityProfiles)
+}
+func TestGetSeriesByRemoteID(t *testing.T) {
+	id, err := util.GetSeriesByRemoteID("tt1751634")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(id)
 }

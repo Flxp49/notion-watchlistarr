@@ -2,6 +2,12 @@ package util
 
 import (
 	"encoding/json"
+	"encoding/xml"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -72,4 +78,41 @@ func CheckSamePath(p1 string, p2 string) bool {
 	f2 = strings.ReplaceAll(f2, "\\", "")
 	f2 = strings.ToLower(f2)
 	return f1 == f2
+}
+
+type GetSeriesByRemoteIDResponse struct {
+	XMLName xml.Name `xml:"Data"`
+	Series  struct {
+		Text     string `xml:",chardata"`
+		Seriesid string `xml:"seriesid"`
+		IMDBID   string `xml:"IMDB_ID"`
+	} `xml:"Series"`
+}
+
+// To be used when sonarr.LookupSeriesByImdbid returns no match
+//
+// Returns tvdbid
+func GetSeriesByRemoteID(imdbid string) (int, error) {
+	resp, err := http.Get(fmt.Sprintf("https://thetvdb.com/api/GetSeriesByRemoteID.php?imdbid=%s", imdbid))
+	if err != nil {
+		return -1, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil || resp.StatusCode != 200 {
+		if err == nil {
+			err = errors.New(string(body))
+		}
+		return -1, err
+	}
+	var GSBRIR GetSeriesByRemoteIDResponse
+	err = xml.Unmarshal(body, &GSBRIR)
+	if err != nil {
+		return -1, err
+	}
+	id, err := strconv.Atoi(GSBRIR.Series.Seriesid)
+	if err != nil {
+		return -1, err
+	}
+	return id, nil
 }

@@ -23,7 +23,7 @@ type SonarrClient struct {
 func (s *SonarrClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
 	s.req.Method = method
 	s.req.URL, _ = url.Parse(s.hostpath + "/api/v3" + endpoint)
-	if method == "POST" {
+	if method == http.MethodPost {
 		s.req.Body = io.NopCloser(bytes.NewBuffer(data))
 		s.req.ContentLength = int64(len(data))
 	} else {
@@ -52,7 +52,7 @@ type GetRootFolderResponse []struct {
 
 // Fetches the rootfolder path set in Sonarr
 func (s *SonarrClient) GetRootFolder() (GetRootFolderResponse, error) {
-	_, body, err := s.performReq("GET", "/rootfolder", nil)
+	_, body, err := s.performReq(http.MethodGet, "/rootfolder", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ type QualityProfileResponse []struct {
 
 // Fetches the quality profiles
 func (s *SonarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
-	_, body, err := s.performReq("GET", "/qualityprofile", nil)
+	_, body, err := s.performReq(http.MethodGet, "/qualityprofile", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -92,18 +92,21 @@ type LookupSeriesByImdbidResponse []struct {
 }
 
 // lookup series via Sonarr to get tvdbid
-func (s *SonarrClient) LookupSeriesByImdbid(imdbId string) (LookupSeriesByImdbidResponse, error) {
+func (s *SonarrClient) LookupSeriesByImdbid(imdbId string) (int, error) {
 
-	_, body, err := s.performReq("GET", fmt.Sprintf("/series/lookup?term=imdbId:%s", imdbId), nil)
+	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/series/lookup?term=imdbId:%s", imdbId), nil)
 	if err != nil {
-		return nil, err
+		return -1, err
 	}
 	var lSBIR LookupSeriesByImdbidResponse
 	err = util.ParseJson(body, &lSBIR)
-	if err != nil {
-		return nil, err
+	if err != nil || len(lSBIR) == 0 {
+		if err == nil {
+			err = errors.New("No title found for imdbId")
+		}
+		return -1, err
 	}
-	return lSBIR, nil
+	return lSBIR[0].TvdbId, nil
 }
 
 // Add the series to Sonarr
@@ -131,7 +134,7 @@ func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int,
 	if err != nil {
 		return err
 	}
-	_, _, err = s.performReq("POST", "/series", data)
+	_, _, err = s.performReq(http.MethodPost, "/series", data)
 	if err != nil {
 		return err
 	}
@@ -158,7 +161,7 @@ func (s *SonarrClient) GetSeries(tvdbId int) (GetSeriesResponse, error) {
 	} else {
 		query = fmt.Sprintf("/series?tvdbId=%d", tvdbId)
 	}
-	_, body, err := s.performReq("GET", query, nil)
+	_, body, err := s.performReq(http.MethodGet, query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +175,7 @@ func (s *SonarrClient) GetSeries(tvdbId int) (GetSeriesResponse, error) {
 
 // Fetch movie download status
 func (s *SonarrClient) GetQueueDetails(seriesId int) (util.GetQueueDetailsResponse, error) {
-	_, body, err := s.performReq("GET", fmt.Sprintf("/queue?id=%d", seriesId), nil)
+	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/queue?id=%d", seriesId), nil)
 	if err != nil {
 		return util.GetQueueDetailsResponse{}, err
 	}

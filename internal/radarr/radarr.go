@@ -23,7 +23,7 @@ type RadarrClient struct {
 func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
 	r.req.Method = method
 	r.req.URL, _ = url.Parse(r.hostpath + "/api/v3" + endpoint)
-	if method == "POST" {
+	if method == http.MethodPost {
 		r.req.Body = io.NopCloser(bytes.NewBuffer(data))
 		r.req.ContentLength = int64(len(data))
 	} else {
@@ -52,7 +52,7 @@ type GetRootFolderResponse []struct {
 
 // Fetches the rootfolder path set in Radarr
 func (r *RadarrClient) GetRootFolder() (GetRootFolderResponse, error) {
-	_, body, err := r.performReq("GET", "/rootfolder", nil)
+	_, body, err := r.performReq(http.MethodGet, "/rootfolder", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ type QualityProfileResponse []struct {
 
 // Fetches the quality profiles
 func (r *RadarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
-	_, body, err := r.performReq("GET", "/qualityprofile", nil)
+	_, body, err := r.performReq(http.MethodGet, "/qualityprofile", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ type LookupMovieByImdbidResponse struct {
 // lookup movie via Radarr to get tmdbid
 func (r *RadarrClient) LookupMovieByImdbid(imdbId string) (LookupMovieByImdbidResponse, error) {
 
-	_, body, err := r.performReq("GET", fmt.Sprintf("/movie/lookup/imdb?imdbId=%s", imdbId), nil)
+	_, body, err := r.performReq(http.MethodGet, fmt.Sprintf("/movie/lookup/imdb?imdbId=%s", imdbId), nil)
 	if err != nil {
 		return LookupMovieByImdbidResponse{}, err
 	}
@@ -129,7 +129,7 @@ func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, 
 	if err != nil {
 		return err
 	}
-	_, _, err = r.performReq("POST", "/movie", data)
+	_, _, err = r.performReq(http.MethodPost, "/movie", data)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (r *RadarrClient) GetMovie(tmdbId int) (GetMovieResponse, error) {
 	} else {
 		query = fmt.Sprintf("/movie?tmdbId=%d", tmdbId)
 	}
-	_, body, err := r.performReq("GET", query, nil)
+	_, body, err := r.performReq(http.MethodGet, query, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (r *RadarrClient) GetMovie(tmdbId int) (GetMovieResponse, error) {
 
 // Fetch movie download status
 func (r *RadarrClient) GetQueueDetails(movieID int) (util.GetQueueDetailsResponse, error) {
-	_, body, err := r.performReq("GET", fmt.Sprintf("/queue?id=%d", movieID), nil)
+	_, body, err := r.performReq(http.MethodGet, fmt.Sprintf("/queue?id=%d", movieID), nil)
 	if err != nil {
 		return util.GetQueueDetailsResponse{}, err
 	}
