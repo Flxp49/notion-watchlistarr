@@ -152,14 +152,6 @@ type QueryDBResponse struct {
 					Plain_text string `json:"plain_text"`
 				} `json:"rich_text"`
 			} `json:"IMDb ID"`
-			Tmdbid struct {
-				Number int `json:"number"`
-			} `json:"ID"`
-			Name struct {
-				Title []struct {
-					Plain_text string `json:"plain_text"`
-				} `json:"title"`
-			}
 			QualityProfile struct {
 				Select struct {
 					Name string `json:"name"`

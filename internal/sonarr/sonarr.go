@@ -87,26 +87,26 @@ func (s *SonarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
 }
 
 type LookupSeriesByImdbidResponse []struct {
-	TvdbId int `json:"tvdbId"`
-	// ImdbId string `json:"imdbId"`
+	TvdbId int    `json:"tvdbId"`
+	Title  string `json:"title"`
 }
 
 // lookup series via Sonarr to get tvdbid
-func (s *SonarrClient) LookupSeriesByImdbid(imdbId string) (int, error) {
+func (s *SonarrClient) LookupSeriesByImdbid(imdbId string) (LookupSeriesByImdbidResponse, error) {
 
 	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/series/lookup?term=imdbId:%s", imdbId), nil)
 	if err != nil {
-		return -1, err
+		return nil, err
 	}
 	var lSBIR LookupSeriesByImdbidResponse
 	err = util.ParseJson(body, &lSBIR)
 	if err != nil || len(lSBIR) == 0 {
 		if err == nil {
-			err = errors.New("No title found for imdbId")
+			err = errors.New("no title found for imdbId")
 		}
-		return -1, err
+		return nil, err
 	}
-	return lSBIR[0].TvdbId, nil
+	return lSBIR, nil
 }
 
 // Add the series to Sonarr
@@ -121,14 +121,14 @@ func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int,
 		Monitored        bool   `json:"monitored"`
 		SeasonFolder     bool   `json:"seasonFolder"`
 		AddOptions       struct {
-			SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
-			MonitorTypes             string
+			SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
+			Monitor                  string `json:"monitor"`
 		} `json:"addOptions"`
 	}
 	payload := addSeriesPayload{Title: title, QualityProfileId: qualityProfileId, TvdbId: TvdbId, RootFolderPath: rootFolderPath, Monitored: monitored, SeasonFolder: seasonFolder, AddOptions: struct {
-		SearchForMissingEpisodes bool `json:"searchForMissingEpisodes"`
-		MonitorTypes             string
-	}{SearchForMissingEpisodes: SearchForMissingEpisodes, MonitorTypes: monitorProfile}}
+		SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
+		Monitor                  string `json:"monitor"`
+	}{SearchForMissingEpisodes: SearchForMissingEpisodes, Monitor: monitorProfile}}
 
 	data, err := json.Marshal(payload)
 	if err != nil {

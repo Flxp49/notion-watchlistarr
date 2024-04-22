@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -55,7 +54,7 @@ type GetQueueDetailsResponse struct {
 	} `json:"records"`
 }
 
-// this takes the GetQueueDetailsResponse and returns the
+// this takes the GetQueueDetailsResponse and returns the suitable status: "Not Downloaded" | "Error" | "Downloading"
 func GetDownloadStatus(download GetQueueDetailsResponse) (string, error) {
 	if download.TotalRecords == 0 {
 		return "Not Downloaded", nil
@@ -83,19 +82,18 @@ func CheckSamePath(p1 string, p2 string) bool {
 type GetSeriesByRemoteIDResponse struct {
 	XMLName xml.Name `xml:"Data"`
 	Series  struct {
-		Text     string `xml:",chardata"`
-		Seriesid string `xml:"seriesid"`
-		IMDBID   string `xml:"IMDB_ID"`
+		SeriesName string `xml:"SeriesName"`
+		Seriesid   string `xml:"seriesid"`
 	} `xml:"Series"`
 }
 
 // To be used when sonarr.LookupSeriesByImdbid returns no match
 //
-// Returns tvdbid
-func GetSeriesByRemoteID(imdbid string) (int, error) {
+// Returns tvdbid and name of series
+func GetSeriesByRemoteID(imdbid string) (GetSeriesByRemoteIDResponse, error) {
 	resp, err := http.Get(fmt.Sprintf("https://thetvdb.com/api/GetSeriesByRemoteID.php?imdbid=%s", imdbid))
 	if err != nil {
-		return -1, err
+		return GetSeriesByRemoteIDResponse{}, err
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
@@ -103,16 +101,12 @@ func GetSeriesByRemoteID(imdbid string) (int, error) {
 		if err == nil {
 			err = errors.New(string(body))
 		}
-		return -1, err
+		return GetSeriesByRemoteIDResponse{}, err
 	}
 	var GSBRIR GetSeriesByRemoteIDResponse
 	err = xml.Unmarshal(body, &GSBRIR)
 	if err != nil {
-		return -1, err
+		return GetSeriesByRemoteIDResponse{}, err
 	}
-	id, err := strconv.Atoi(GSBRIR.Series.Seriesid)
-	if err != nil {
-		return -1, err
-	}
-	return id, nil
+	return GSBRIR, nil
 }

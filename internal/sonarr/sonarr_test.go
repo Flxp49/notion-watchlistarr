@@ -29,7 +29,7 @@ func TestLookupSeriesByTvdbid(t *testing.T) {
 }
 
 func TestAddSeries(t *testing.T) {
-	err := Sonarr.AddSeries("The Witcher: Blood Origin", 4, 399987, "D:\\Media\\Shows", true, true, true, "None")
+	err := Sonarr.AddSeries("Doom Patrol", 4, 355622, "D:\\Media\\Shows", true, true, true, "LastSeason")
 	if err != nil {
 		t.Fatal(err)
 	}

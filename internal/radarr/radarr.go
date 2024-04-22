@@ -87,7 +87,8 @@ func (r *RadarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
 }
 
 type LookupMovieByImdbidResponse struct {
-	Tmdbid int `json:"tmdbId"`
+	Tmdbid        int    `json:"tmdbId"`
+	OriginalTitle string `json:"originalTitle"`
 }
 
 // lookup movie via Radarr to get tmdbid

@@ -2,6 +2,7 @@ package routine
 
 import (
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/notion"
@@ -52,17 +53,16 @@ start:
 		if m.Properties.QualityProfile.Select.Name == "" {
 			m.Properties.QualityProfile.Select.Name = qualityProp
 		}
-		Logger.Info("RadarrSync", "Status", "Adding Title", "Title", m.Properties.Name.Title[0].Plain_text)
-		err = R.AddMovie(m.Properties.Name.Title[0].Plain_text, N.Qpid[m.Properties.QualityProfile.Select.Name], tmdbid.Tmdbid, N.Rpid[m.Properties.RootFolder.Select.Name], true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name])
-		//check for exists error (movie already exists in radarr)
+		Logger.Info("RadarrSync", "Status", "Adding Title", "Title", tmdbid.OriginalTitle)
+		err = R.AddMovie(tmdbid.OriginalTitle, N.Qpid[m.Properties.QualityProfile.Select.Name], tmdbid.Tmdbid, N.Rpid[m.Properties.RootFolder.Select.Name], true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name])
 		exists, err := util.ExistingTitleErrorHandle(err)
 		if err != nil {
-			Logger.Error("RadarrSync", "Error adding title", m.Properties.Name.Title[0].Plain_text, "Error", err)
+			Logger.Error("RadarrSync", "Error adding title", tmdbid.OriginalTitle, "Error", err)
 			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 			continue
 		}
 		if !exists {
-			Logger.Info("RadarrSync", "Status", "Added title", "Title", m.Properties.Name.Title[0].Plain_text)
+			Logger.Info("RadarrSync", "Status", "Added title", "Title", tmdbid.OriginalTitle)
 			continue
 		}
 		// movie exists
@@ -121,16 +121,24 @@ start:
 	}
 	Logger.Info("SonarrSync", "Status", "Fetched titles from DB", "No of titles fetched", len(data.Results))
 	for _, m := range data.Results {
-		tvdbid, err := S.LookupSeriesByImdbid(m.Properties.Imdbid.Rich_text[0].Plain_text)
+		var seriesName string
+		var seriesTvDBID int
+		tvdbInfo, err := S.LookupSeriesByImdbid(m.Properties.Imdbid.Rich_text[0].Plain_text)
 		if err != nil {
 			Logger.Warn("SonarrSync", "Failed to fetch tvdbid via sonarr of imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
 			// use secondary search
-			tvdbid, err = util.GetSeriesByRemoteID(m.Properties.Imdbid.Rich_text[0].Plain_text)
+			fallbackTvdbInfo, err := util.GetSeriesByRemoteID(m.Properties.Imdbid.Rich_text[0].Plain_text)
 			if err != nil {
 				Logger.Error("SonarrSync", "Failed to fetch tvdbid of imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
 				N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 				continue
 			}
+			seriesName = fallbackTvdbInfo.Series.SeriesName
+			id, _ := strconv.Atoi(fallbackTvdbInfo.Series.Seriesid)
+			seriesTvDBID = id
+		} else {
+			seriesName = tvdbInfo[0].Title
+			seriesTvDBID = tvdbInfo[0].TvdbId
 		}
 		// set monitor property
 		if m.Properties.MonitorProfile.Select.Name == "" {
@@ -158,23 +166,23 @@ start:
 		if m.Properties.QualityProfile.Select.Name == "" {
 			m.Properties.QualityProfile.Select.Name = qualityProp
 		}
-		Logger.Info("SonarrSync", "Status", "Adding Title", "Title", m.Properties.Name.Title[0].Plain_text)
-		err = S.AddSeries(m.Properties.Name.Title[0].Plain_text, N.Qpid[m.Properties.QualityProfile.Select.Name], tvdbid, N.Rpid[m.Properties.RootFolder.Select.Name], true, true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name]) //todo
+		Logger.Info("SonarrSync", "Status", "Adding Title", "Title", seriesName)
+		err = S.AddSeries(seriesName, N.Qpid[m.Properties.QualityProfile.Select.Name], seriesTvDBID, N.Rpid[m.Properties.RootFolder.Select.Name], true, true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name])
 		//check for exists error (series already exists in radarr)
 		exists, err := util.ExistingTitleErrorHandle(err)
 		if err != nil {
-			Logger.Error("SonarrSync", "Error adding title", m.Properties.Name.Title[0].Plain_text, "Error", err)
+			Logger.Error("SonarrSync", "Error adding title", seriesName, "Error", err)
 			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 			continue
 		}
 		if !exists {
-			Logger.Info("SonarrSync", "Status", "Added title", "Title", m.Properties.Name.Title[0].Plain_text)
+			Logger.Info("SonarrSync", "Status", "Added title", "Title", seriesName)
 			continue
 		}
 		// series exists
 		// check if downloaded or not
 		//? make a put request to update the movie?
-		series, err := S.GetSeries(tvdbid)
+		series, err := S.GetSeries(seriesTvDBID)
 		if err != nil {
 			Logger.Error("SonarrSync", "Failed to fetch movie details from sonarr", err)
 			continue
