@@ -98,7 +98,7 @@ The app on launch adds the following properties with values to the Notion databa
 
 The options for the respective properties can be used to set the Quality Profile, Root Folder and Monitor Profile for the media to download (via Radarr/Sonarr) 
 
-### Download
+## Download
 To download, Select the required profiles and then 'check' the Download property of the title.  
 ![notionwatchlistarr1](https://github.com/Flxp49/notion-watchlist-radarr-sonarr/assets/63506727/dbe994a5-1de0-4cfb-8c93-bae495e1a086)  
   
@@ -110,12 +110,12 @@ When Downloaded, the Download Status is updated with the respective info:
 
 >The app uses webhooks to sync the status of the media.
 
-### Sync
+## Sync
 The app runs 2 routines to sync the downloads:  
 1. Queries the watchlist every `ARRSYNC_INTERVAL_SEC` for downloading media via Radarr/Sonarr
 2. Syncs the existing media in Radarr/Sonarr library with the watchlist every `WATCHLIST_SYNC_INTERVAL_HOUR` and updates the Download Status accordingly
 
-### Logging
+## Logging
 - Executable: On launch, app creates a log file in the same directory as the app. Will output logs in this file according to the log level set in the env file 
 - Docker: Logs output to container logs.
 
