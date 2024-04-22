@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/notion"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/radarr"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/routine"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/sonarr"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/server"
+	"github.com/flxp49/notion-watchlistarr/internal/notion"
+	"github.com/flxp49/notion-watchlistarr/internal/radarr"
+	"github.com/flxp49/notion-watchlistarr/internal/routine"
+	"github.com/flxp49/notion-watchlistarr/internal/sonarr"
+	"github.com/flxp49/notion-watchlistarr/server"
 	"github.com/joho/godotenv"
 )
 

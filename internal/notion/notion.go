@@ -10,7 +10,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/util"
+	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
 //	type monitorMap struct {

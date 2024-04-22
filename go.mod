@@ -1,4 +1,4 @@
-module github.com/flxp49/notion-watchlist-radarr-sonarr
+module github.com/flxp49/notion-watchlistarr
 
 go 1.22
 

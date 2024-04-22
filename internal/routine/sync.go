@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/notion"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/radarr"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/sonarr"
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/util"
+	"github.com/flxp49/notion-watchlistarr/internal/notion"
+	"github.com/flxp49/notion-watchlistarr/internal/radarr"
+	"github.com/flxp49/notion-watchlistarr/internal/sonarr"
+	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
 // This function fetches movies set to download from the notion watchlist

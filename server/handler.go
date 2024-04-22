@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flxp49/notion-watchlist-radarr-sonarr/internal/util"
+	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
 type MovieInfo struct {
