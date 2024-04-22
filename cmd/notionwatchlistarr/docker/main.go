@@ -16,7 +16,7 @@ import (
 func main() {
 	var programLevel = new(slog.LevelVar)
 	Logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: programLevel}))
-	if os.Getenv("LOG_LEVEL") != "" || os.Getenv("LOG_LEVEL") == "0" {
+	if os.Getenv("LOG_LEVEL") == "0" {
 		programLevel.Set(slog.LevelDebug)
 	} else {
 		programLevel.Set(slog.LevelError)
