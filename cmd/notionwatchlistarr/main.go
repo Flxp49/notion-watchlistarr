@@ -28,7 +28,7 @@ func main() {
 	defer f.Close()
 
 	var programLevel = new(slog.LevelVar)
-	Logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: programLevel}))
+	Logger := slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: programLevel}))
 	if os.Getenv("LOG_LEVEL") != "" || os.Getenv("LOG_LEVEL") == "0" {
 		programLevel.Set(slog.LevelDebug)
 	} else {
@@ -37,7 +37,7 @@ func main() {
 
 	R := radarr.InitRadarrClient(os.Getenv("RADARR_KEY"), os.Getenv("RADARR_HOST"))
 	S := sonarr.InitSonarrClient(os.Getenv("SONARR_KEY"), os.Getenv("SONARR_HOST"))
-	N := notion.InitNotionClient(os.Getenv("NOTION_USER"), os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
+	N := notion.InitNotionClient(os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
 
 	// To manage Root Paths and Quality Profiles and update Notion DB with it.
 	Rpid := make(map[string]string)
@@ -81,7 +81,7 @@ func main() {
 	if os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR") != "" {
 		WatchlistSyncIntervalHour, _ = strconv.Atoi(os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR"))
 	}
-
+Start:
 	err = R.RadarrDefaults(radarrDefaultRootPath, radarrDefaultQualityProfile, radarrDefaultMonitor, Rpid, Qpid)
 	if err != nil {
 		Logger.Error("Failed to fetch Sonarr defaults, Radarr routine not initialized", "Error", err)
@@ -109,8 +109,9 @@ func main() {
 			go routine.SonarrWatchlistSync(Logger, N, S, time.Duration(WatchlistSyncIntervalHour))
 		}
 	} else {
-		Logger.Error("Failed to start radarr and sonarr, terminating app")
-		os.Exit(1)
+		Logger.Error("Failed to start radarr and sonarr, Retrying...")
+		time.Sleep(time.Second * 30)
+		goto Start
 	}
 
 	PORT := os.Getenv("PORT")

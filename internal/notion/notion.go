@@ -19,23 +19,22 @@ import (
 //	}
 
 var MonitorProfiles = map[string]string{
-	"TV Series: All Episodes":        "AllEpisodes",
-	"TV Series: Future Episodes":     "FutureEpisodes",
-	"TV Series: Missing Episodes":    "MissingEpisodes",
-	"TV Series: Existing Episodes":   "ExistingEpisodes",
-	"TV Series: Recent Episodes":     "RecentEpisodes",
-	"TV Series: PilotEpisode":        "PilotEpisode",
-	"TV Series: FirstSeason ":        "FirstSeason",
-	"TV Series: Last Season":         "LastSeason",
-	"TV Series: Monitor Specials":    "MonitorSpecials",
-	"TV Series: Unmonitor Specials ": "UnmonitorSpecials",
-	"TV Series: None":                "None",
-	"Movie: Movie Only":              "MovieOnly",
-	"Movie: Collection":              "MovieandCollection",
+	"TV Series: All Episodes":       "AllEpisodes",
+	"TV Series: Future Episodes":    "FutureEpisodes",
+	"TV Series: Missing Episodes":   "MissingEpisodes",
+	"TV Series: Existing Episodes":  "ExistingEpisodes",
+	"TV Series: Recent Episodes":    "RecentEpisodes",
+	"TV Series: PilotEpisode":       "PilotEpisode",
+	"TV Series: FirstSeason":        "FirstSeason",
+	"TV Series: Last Season":        "LastSeason",
+	"TV Series: Monitor Specials":   "MonitorSpecials",
+	"TV Series: Unmonitor Specials": "UnmonitorSpecials",
+	"TV Series: None":               "None",
+	"Movie: Movie Only":             "MovieOnly",
+	"Movie: Collection":             "MovieandCollection",
 }
 
 type NotionClient struct {
-	user   string
 	secret string
 	dbid   string
 	req    *http.Request
@@ -435,8 +434,8 @@ func (n *NotionClient) GetNotionMonitorProp(monitorProfile string, mtype string)
 	return "", errors.New("invalid monitorProfile id value passed")
 }
 
-func InitNotionClient(username string, secret string, dbid string) *NotionClient {
-	n := &NotionClient{user: username, secret: secret, dbid: dbid}
+func InitNotionClient(secret string, dbid string) *NotionClient {
+	n := &NotionClient{secret: secret, dbid: dbid}
 	n.req, _ = http.NewRequest("", "", nil)
 	n.req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", n.secret))
 	n.req.Header.Add("Notion-Version", "2022-06-28")

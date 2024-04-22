@@ -24,7 +24,7 @@ func main() {
 
 	R := radarr.InitRadarrClient(os.Getenv("RADARR_KEY"), os.Getenv("RADARR_HOST"))
 	S := sonarr.InitSonarrClient(os.Getenv("SONARR_KEY"), os.Getenv("SONARR_HOST"))
-	N := notion.InitNotionClient(os.Getenv("NOTION_USER"), os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
+	N := notion.InitNotionClient(os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
 
 	// To manage Root Paths and Quality Profiles and update Notion DB with it.
 	Rpid := make(map[string]string)
@@ -68,7 +68,7 @@ func main() {
 	if os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR") != "" {
 		WatchlistSyncIntervalHour, _ = strconv.Atoi(os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR"))
 	}
-
+Start:
 	err := R.RadarrDefaults(radarrDefaultRootPath, radarrDefaultQualityProfile, radarrDefaultMonitor, Rpid, Qpid)
 	if err != nil {
 		Logger.Error("Failed to fetch Sonarr defaults, Radarr routine not initialized", "Error", err)
@@ -96,15 +96,20 @@ func main() {
 			go routine.SonarrWatchlistSync(Logger, N, S, time.Duration(WatchlistSyncIntervalHour))
 		}
 	} else {
-		Logger.Error("Failed to start radarr and sonarr, terminating app")
-		os.Exit(1)
+		Logger.Error("Failed to start radarr and sonarr, Retrying...")
+		time.Sleep(time.Second * 30)
+		goto Start
 	}
 
-	PORT := "7879"
+	PORT := os.Getenv("PORT")
+	if PORT == "" {
+		PORT = "7879"
+	}
+
 	Server := server.NewServer(PORT, N, R, S, Logger)
 	err = Server.Start()
 	if err != nil {
-		Logger.Error("Failed to listen on PORT", PORT, "error", err)
+		Logger.Error("Server failed to listen", "Error", err)
 		os.Exit(1)
 	}
 }

@@ -15,7 +15,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	Notion = InitNotionClient(os.Getenv("NOTION_USER"), os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
+	Notion = InitNotionClient(os.Getenv("NOTION_INTEGRATION_SECRET"), os.Getenv("NOTION_DB_ID"))
 	os.Exit(m.Run())
 }
 
