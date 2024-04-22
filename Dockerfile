@@ -7,4 +7,4 @@ EXPOSE 7879
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /notionwatchlistarr /notionwatchlistarr
-CMD [ "/notionwatchlistarrsync" ]
+CMD [ "/notionwatchlistarr" ]
