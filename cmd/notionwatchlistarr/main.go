@@ -109,7 +109,7 @@ Start:
 			go routine.SonarrWatchlistSync(Logger, N, S, time.Duration(WatchlistSyncIntervalHour))
 		}
 	} else {
-		Logger.Error("Failed to start radarr and sonarr, Retrying...")
+		Logger.Error("Failed to start Radarr and Sonarr, Retrying...")
 		time.Sleep(time.Second * 30)
 		goto Start
 	}

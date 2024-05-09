@@ -23,12 +23,12 @@ type SonarrClient struct {
 func (s *SonarrClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
 	s.req.Method = method
 	s.req.URL, _ = url.Parse(s.hostpath + "/api/v3" + endpoint)
-	if method == http.MethodPost {
-		s.req.Body = io.NopCloser(bytes.NewBuffer(data))
-		s.req.ContentLength = int64(len(data))
-	} else {
+	if method == http.MethodGet {
 		s.req.Body = nil
 		s.req.ContentLength = 0
+	} else {
+		s.req.Body = io.NopCloser(bytes.NewBuffer(data))
+		s.req.ContentLength = int64(len(data))
 	}
 	resp, err := http.DefaultClient.Do(s.req)
 	if err != nil {
@@ -147,6 +147,7 @@ type GetSeriesResponse []struct {
 	SeriesID         int    `json:"id"`
 	QualityProfileId int    `json:"qualityProfileId"`
 	Monitored        bool   `json:"monitored"`
+	Path             string `json:"path"`
 	RootFolderPath   string `json:"rootFolderPath"`
 	Statistics       struct {
 		PercentOfEpisodes float32 `json:"percentOfEpisodes"`

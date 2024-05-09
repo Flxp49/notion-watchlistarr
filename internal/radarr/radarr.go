@@ -23,12 +23,12 @@ type RadarrClient struct {
 func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
 	r.req.Method = method
 	r.req.URL, _ = url.Parse(r.hostpath + "/api/v3" + endpoint)
-	if method == http.MethodPost {
-		r.req.Body = io.NopCloser(bytes.NewBuffer(data))
-		r.req.ContentLength = int64(len(data))
-	} else {
+	if method == http.MethodGet {
 		r.req.Body = nil
 		r.req.ContentLength = 0
+	} else {
+		r.req.Body = io.NopCloser(bytes.NewBuffer(data))
+		r.req.ContentLength = int64(len(data))
 	}
 	resp, err := http.DefaultClient.Do(r.req)
 	if err != nil {
@@ -117,15 +117,14 @@ func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, 
 		RootFolderPath   string `json:"rootFolderPath"`
 		Monitored        bool   `json:"monitored"`
 		AddOptions       struct {
-			SearchForMovie bool `json:"searchForMovie"`
-			MonitorTypes   string
+			SearchForMovie bool   `json:"searchForMovie"`
+			Monitor        string `json:"monitor"`
 		} `json:"addOptions"`
 	}
 	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
-		SearchForMovie bool `json:"searchForMovie"`
-		MonitorTypes   string
-	}{SearchForMovie: searchForMovie, MonitorTypes: monitorProfile}}
-
+		SearchForMovie bool   `json:"searchForMovie"`
+		Monitor        string `json:"monitor"`
+	}{SearchForMovie: searchForMovie, Monitor: monitorProfile}}
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err

@@ -24,8 +24,8 @@ var MonitorProfiles = map[string]string{
 	"TV Series: Missing Episodes":   "MissingEpisodes",
 	"TV Series: Existing Episodes":  "ExistingEpisodes",
 	"TV Series: Recent Episodes":    "RecentEpisodes",
-	"TV Series: PilotEpisode":       "PilotEpisode",
-	"TV Series: FirstSeason":        "FirstSeason",
+	"TV Series: Pilot Episode":      "PilotEpisode",
+	"TV Series: First Season":       "FirstSeason",
 	"TV Series: Last Season":        "LastSeason",
 	"TV Series: Monitor Specials":   "MonitorSpecials",
 	"TV Series: Unmonitor Specials": "UnmonitorSpecials",
@@ -45,12 +45,12 @@ type NotionClient struct {
 func (n *NotionClient) performNotionReq(method string, endpoint string, data []byte) (*http.Response, []byte, error) {
 	n.req.Method = method
 	n.req.URL, _ = url.Parse("https://api.notion.com" + "/" + endpoint)
-	if method == "POST" || method == "PATCH" {
-		n.req.Body = io.NopCloser(bytes.NewBuffer(data))
-		n.req.ContentLength = int64(len(data))
-	} else {
+	if method == http.MethodGet {
 		n.req.Body = nil
 		n.req.ContentLength = 0
+	} else {
+		n.req.Body = io.NopCloser(bytes.NewBuffer(data))
+		n.req.ContentLength = int64(len(data))
 	}
 	resp, err := http.DefaultClient.Do(n.req)
 	if err != nil {
