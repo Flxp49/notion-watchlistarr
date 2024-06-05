@@ -2,6 +2,7 @@
 Download media (via Radarr & Sonarr) directly from watchlist on Notion.
 
 # Prerequisites
+- [Notion Integration](https://developers.notion.com/docs/create-a-notion-integration#getting-started)
 - [Radarr](https://github.com/Radarr/Radarr)
 - [Sonarr](https://github.com/Sonarr/Sonarr)
 - The script requires the following properties to exist in the user's watchlist database on Notion
@@ -61,10 +62,13 @@ The executable requires a .env file in the same directory from which it reads th
 | `WATCHLIST_SYNC_INTERVAL_HOUR` | Duration (**Hours**) Interval to sync media in Radarr and Sonarr library with watchlist | 12 |
 
 ## Docker
+```
+docker build --rm -t notionwatchlistarr .
+```
 Env variables can be setup while spinning up the docker image. The user can either set them via CLI individually or pass an env file.  
 env file is the same as the one specified above (Executable Section) EXCLUDING `PORT`. `PORT` = 7879.  
 ```
-docker run --env-file D:/path/to/env-file/.env -d -p XXXX:7879 notionwatchlistarrsync:v0.1
+docker run --env-file D:/path/to/env-file/.env -d -p XXXX:7879 notionwatchlistarr
 ```  
 >**NOTE** the host for radarr and sonarr may have to be `http://host.docker.internal:XXXX` instead of `http://localhost:XXXX`
 
@@ -121,6 +125,9 @@ The app runs 2 routines to sync the downloads:
 
 # Known Issues
 - `Monitor` profile does not show up via the API hence it will remain empty in the Notion database (unless set by the user before downloading)
+
+# Backlog
+- Update feature: if a movie/series exists in the library but the property (monitor/quality) is changed, then update the title in Radarr/Sonarr 
 
 # Developer
 ```
