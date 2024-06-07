@@ -2,6 +2,7 @@ package main
 
 import (
 	"log/slog"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -30,36 +31,22 @@ func main() {
 	Rpid := make(map[string]string)
 	Qpid := make(map[string]int)
 
-	// set flag for radarr routine
-	radarrStart := true
-	// set flag for sonarr routine
-	sonarrStart := true
-
 	// Fetch Radarr & Sonarr info
-	radarrDefaultRootPath := ""
-	radarrDefaultQualityProfile := ""
-	radarrDefaultMonitor := ""
-	if os.Getenv("RADARR_DEFAULT_ROOT_PATH") != "" {
-		radarrDefaultRootPath = os.Getenv("RADARR_DEFAULT_ROOT_PATH")
+	radarrInit := "1"
+	if os.Getenv("RADARR_INIT") != "" {
+		radarrInit = os.Getenv("RADARR_INIT")
 	}
-	if os.Getenv("RADARR_DEFAULT_QUALITY_PROFILE") != "" {
-		radarrDefaultQualityProfile = os.Getenv("RADARR_DEFAULT_QUALITY_PROFILE")
+	radarrDefaultRootPath := os.Getenv("RADARR_DEFAULT_ROOT_PATH")
+	radarrDefaultQualityProfile := os.Getenv("RADARR_DEFAULT_QUALITY_PROFILE")
+	radarrDefaultMonitor := os.Getenv("RADARR_DEFAULT_MONITOR")
+	sonarrInit := "1"
+	if os.Getenv("SONARR_INIT") != "" {
+		sonarrInit = os.Getenv("SONARR_INIT")
 	}
-	if os.Getenv("RADARR_DEFAULT_MONITOR") != "" {
-		radarrDefaultMonitor = os.Getenv("RADARR_DEFAULT_MONITOR")
-	}
-	sonarrDefaultRootPath := ""
-	sonarrDefaultQualityProfile := ""
-	sonarrDefaultMonitor := ""
-	if os.Getenv("SONARR_DEFAULT_ROOT_PATH") != "" {
-		sonarrDefaultRootPath = os.Getenv("SONARR_DEFAULT_ROOT_PATH")
-	}
-	if os.Getenv("SONARR_DEFAULT_QUALITY_PROFILE") != "" {
-		sonarrDefaultQualityProfile = os.Getenv("SONARR_DEFAULT_QUALITY_PROFILE")
-	}
-	if os.Getenv("SONARR_DEFAULT_MONITOR") != "" {
-		sonarrDefaultMonitor = os.Getenv("SONARR_DEFAULT_MONITOR")
-	}
+	sonarrDefaultRootPath := os.Getenv("SONARR_DEFAULT_ROOT_PATH")
+	sonarrDefaultQualityProfile := os.Getenv("SONARR_DEFAULT_QUALITY_PROFILE")
+	sonarrDefaultMonitor := os.Getenv("SONARR_DEFAULT_MONITOR")
+
 	ArrSyncinternvalSec := 10
 	WatchlistSyncIntervalHour := 12
 	if os.Getenv("ARRSYNC_INTERVAL_SEC") != "" {
@@ -68,37 +55,43 @@ func main() {
 	if os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR") != "" {
 		WatchlistSyncIntervalHour, _ = strconv.Atoi(os.Getenv("WATCHLIST_SYNC_INTERVAL_HOUR"))
 	}
+
 Start:
-	err := R.RadarrDefaults(radarrDefaultRootPath, radarrDefaultQualityProfile, radarrDefaultMonitor, Rpid, Qpid)
-	if err != nil {
-		Logger.Error("Failed to fetch Sonarr defaults, Radarr routine not initialized", "Error", err)
-		radarrStart = false
-	}
-	err = S.SonarrDefaults(sonarrDefaultRootPath, sonarrDefaultQualityProfile, sonarrDefaultMonitor, Rpid, Qpid)
-	if err != nil {
-		Logger.Error("Failed to fetch Sonarr defaults, Sonarr routine not initialized", "Error", err)
-		sonarrStart = false
-	}
-	if radarrStart || sonarrStart {
-		// Add properties to the DB
-		err = N.AddDBProperties(Qpid, Rpid)
-		if err != nil {
-			Logger.Error("Failed to add properties to DB", "Error", err)
-			os.Exit(1)
-		}
-		Logger.Info("Database updated with new properties")
-		if radarrStart {
-			go routine.RadarrSync(Logger, N, R, time.Duration(ArrSyncinternvalSec))
-			go routine.RadarrWatchlistSync(Logger, N, R, time.Duration(WatchlistSyncIntervalHour))
-		}
-		if sonarrStart {
-			go routine.SonarrSync(Logger, N, S, time.Duration(ArrSyncinternvalSec))
-			go routine.SonarrWatchlistSync(Logger, N, S, time.Duration(WatchlistSyncIntervalHour))
-		}
-	} else {
-		Logger.Error("Failed to start Radarr and Sonarr, Retrying...")
+	if !waitForService(radarrInit, sonarrInit) {
+		Logger.Error("Radarr / Sonarr servies not available, Retrying...")
 		time.Sleep(time.Second * 30)
 		goto Start
+	}
+	if radarrInit == "1" {
+		err := R.RadarrDefaults(radarrDefaultRootPath, radarrDefaultQualityProfile, radarrDefaultMonitor, Rpid, Qpid)
+		if err != nil {
+			Logger.Error("Failed to fetch Radarr defaults, Retrying...", "Error", err)
+			time.Sleep(time.Second * 30)
+			goto Start
+		}
+	}
+	if sonarrInit == "1" {
+		err := S.SonarrDefaults(sonarrDefaultRootPath, sonarrDefaultQualityProfile, sonarrDefaultMonitor, Rpid, Qpid)
+		if err != nil {
+			Logger.Error("Failed to fetch Sonarr defaults, Retrying...", "Error", err)
+			time.Sleep(time.Second * 30)
+			goto Start
+		}
+	}
+	// Add properties to the DB
+	err := N.AddDBProperties(Qpid, Rpid)
+	if err != nil {
+		Logger.Error("Failed to add properties to DB", "Error", err)
+		goto Start
+	}
+	Logger.Info("Database updated with new properties")
+	if radarrInit == "1" {
+		go routine.RadarrSync(Logger, N, R, time.Duration(ArrSyncinternvalSec))
+		go routine.RadarrWatchlistSync(Logger, N, R, time.Duration(WatchlistSyncIntervalHour))
+	}
+	if sonarrInit == "1" {
+		go routine.SonarrSync(Logger, N, S, time.Duration(ArrSyncinternvalSec))
+		go routine.SonarrWatchlistSync(Logger, N, S, time.Duration(WatchlistSyncIntervalHour))
 	}
 
 	PORT := os.Getenv("PORT")
@@ -106,10 +99,32 @@ Start:
 		PORT = "7879"
 	}
 
-	Server := server.NewServer(PORT, N, R, S, Logger)
+	Server := server.NewServer(PORT, N, R, S, Logger, radarrInit == "1", sonarrInit == "1")
 	err = Server.Start()
 	if err != nil {
 		Logger.Error("Server failed to listen", "Error", err)
 		os.Exit(1)
 	}
+}
+
+func waitForService(radarrInit string, sonarrInit string) bool {
+	status := false
+	client := http.Client{}
+	if radarrInit == "1" {
+		resp, err := client.Get(os.Getenv("RADARR_HOST"))
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		status = resp.StatusCode == http.StatusOK
+	}
+	if sonarrInit == "1" {
+		resp, err := client.Get(os.Getenv("SONARR_HOST"))
+		if err != nil {
+			return false
+		}
+		defer resp.Body.Close()
+		status = resp.StatusCode == http.StatusOK
+	}
+	return status
 }

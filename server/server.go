@@ -15,21 +15,29 @@ type Server struct {
 	R          *radarr.RadarrClient
 	S          *sonarr.SonarrClient
 	Logger     *slog.Logger
+	RadarrInit bool
+	SonarrInit bool
 }
 
-func NewServer(listenAddr string, N *notion.NotionClient, R *radarr.RadarrClient, S *sonarr.SonarrClient, Logger *slog.Logger) *Server {
+func NewServer(listenAddr string, N *notion.NotionClient, R *radarr.RadarrClient, S *sonarr.SonarrClient, Logger *slog.Logger, RadarrInit bool, SonarrInit bool) *Server {
 	return &Server{
 		listenAddr: listenAddr,
 		N:          N,
 		R:          R,
 		S:          S,
 		Logger:     Logger,
+		RadarrInit: RadarrInit,
+		SonarrInit: SonarrInit,
 	}
 }
 
 func (s *Server) Start() error {
 	http.HandleFunc("/", s.incorrectReqHandler)
-	http.HandleFunc("POST /radarr", s.radarrHandler)
-	http.HandleFunc("POST /sonarr", s.sonarrHandler)
+	if s.RadarrInit {
+		http.HandleFunc("POST /radarr", s.radarrHandler)
+	}
+	if s.SonarrInit {
+		http.HandleFunc("POST /sonarr", s.sonarrHandler)
+	}
 	return http.ListenAndServe(":"+s.listenAddr, nil)
 }
