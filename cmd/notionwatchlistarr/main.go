@@ -17,16 +17,17 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
 	// init log file
 	f, err := os.OpenFile("notionwatchlistarrsync.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
 	defer f.Close()
+
+	err = godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
 	var programLevel = new(slog.LevelVar)
 	Logger := slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: programLevel}))
