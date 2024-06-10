@@ -45,6 +45,8 @@ The executable requires a .env file in the same directory from which it reads th
 | Env | Value | Default |
 | -------- | -------- | -------- | 
 | `PORT` | Port No to listen on | `7879` |
+| `RADARR_INIT` | Enable Radarr Sync: `0` - Disable `1` - Enable | `1` |
+| `SONARR_INIT` | Enable Sonarr Sync: `0` - Disable `1` - Enable | `1` |
 | `LOG_LEVEL` | `0` - DEBUG `1` - ERROR | `1` |
 | `NOTION_INTEGRATION_SECRET` | Notion Integration Secret | NA |
 | `NOTION_DB_ID` | Database id (found in the URL of the database page) | NA |
@@ -121,13 +123,11 @@ The app runs 2 routines to sync the downloads:
 
 ## Logging
 - Executable: On launch, app creates a log file in the same directory as the app. Will output logs in this file according to the log level set in the env file 
-- Docker: Logs output to container logs.
+- Docker: Logs output to container logs
 
-# Known Issues
+# Limitations
+- Update feature: if a movie/series already exists in the library - updating the library with different monitor profile isnt supported yet
 - `Monitor` profile does not show up via the API hence it will remain empty in the Notion database (unless set by the user before downloading)
-
-# Backlog
-- Update feature: if a movie/series exists in the library but the property (monitor/quality) is changed, then update the title in Radarr/Sonarr 
 
 # Developer
 ```
