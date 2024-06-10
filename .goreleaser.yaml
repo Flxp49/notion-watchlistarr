@@ -6,7 +6,7 @@ before:
     - go mod tidy
 
 builds:
-  - id: windows
+  - id: win
     env:
       - CGO_ENABLED=0
     main: ./cmd/notionwatchlistarr
@@ -14,7 +14,7 @@ builds:
       - windows
     ldflags: "-H windowsgui"
 
-  - id: linux-darwin
+  - id: lin-dar
     env:
       - CGO_ENABLED=0
     main: ./cmd/notionwatchlistarr
