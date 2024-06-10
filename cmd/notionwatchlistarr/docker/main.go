@@ -31,7 +31,6 @@ func main() {
 	Rpid := make(map[string]string)
 	Qpid := make(map[string]int)
 
-	// Fetch Radarr & Sonarr info
 	radarrInit := "1"
 	if os.Getenv("RADARR_INIT") != "" {
 		radarrInit = os.Getenv("RADARR_INIT")
