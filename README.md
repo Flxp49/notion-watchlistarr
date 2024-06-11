@@ -41,6 +41,8 @@ There are 2 ways to run Notion Watchlistarr.
 - Docker
 
 ## Executable
+>**NOTE** Depending upon the location of the exe, you may need to run it as administator
+
 The executable requires a .env file in the same directory from which it reads the following values:
 | Env | Value | Default |
 | -------- | -------- | -------- | 
