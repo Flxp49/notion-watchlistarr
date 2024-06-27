@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
@@ -86,22 +87,67 @@ func (r *RadarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
 
 }
 
-type LookupMovieByImdbidResponse struct {
-	Tmdbid        int    `json:"tmdbId"`
-	OriginalTitle string `json:"originalTitle"`
+type MovieLookupResponse struct {
+	Title            string `json:"title"`
+	OriginalTitle    string `json:"originalTitle"`
+	OriginalLanguage struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"originalLanguage"`
+	AlternateTitles []struct {
+		SourceType      string `json:"sourceType"`
+		MovieMetadataID int    `json:"movieMetadataId"`
+		Title           string `json:"title"`
+	} `json:"alternateTitles"`
+	SecondaryYearSourceID int       `json:"secondaryYearSourceId"`
+	SortTitle             string    `json:"sortTitle"`
+	Status                string    `json:"status"`
+	Overview              string    `json:"overview"`
+	InCinemas             time.Time `json:"inCinemas"`
+	PhysicalRelease       time.Time `json:"physicalRelease"`
+	DigitalRelease        time.Time `json:"digitalRelease"`
+	Images                []struct {
+		CoverType string `json:"coverType"`
+		RemoteURL string `json:"remoteUrl"`
+	} `json:"images"`
+	Website             string        `json:"website"`
+	Year                int           `json:"year"`
+	YouTubeTrailerID    string        `json:"youTubeTrailerId"`
+	Studio              string        `json:"studio"`
+	QualityProfileID    int           `json:"qualityProfileId"`
+	MovieFileID         int           `json:"movieFileId"`
+	Monitored           bool          `json:"monitored"`
+	MinimumAvailability string        `json:"minimumAvailability"`
+	IsAvailable         bool          `json:"isAvailable"`
+	FolderName          string        `json:"folderName"`
+	Runtime             int           `json:"runtime"`
+	CleanTitle          string        `json:"cleanTitle"`
+	ImdbID              string        `json:"imdbId"`
+	TmdbID              int           `json:"tmdbId"`
+	TitleSlug           string        `json:"titleSlug"`
+	Certification       string        `json:"certification"`
+	Genres              []string      `json:"genres"`
+	Tags                []interface{} `json:"tags"`
+	Added               time.Time     `json:"added"`
+	Ratings             map[string]struct {
+		Votes int     `json:"votes"`
+		Value float32 `json:"value"`
+		Type  string  `json:"type"`
+	} `json:"ratings"`
+	Popularity float32 `json:"popularity"`
 }
 
 // lookup movie via Radarr to get tmdbid
-func (r *RadarrClient) LookupMovieByImdbid(imdbId string) (LookupMovieByImdbidResponse, error) {
+func (r *RadarrClient) LookupMovie(imdbId string) (MovieLookupResponse, error) {
 
 	_, body, err := r.performReq(http.MethodGet, fmt.Sprintf("/movie/lookup/imdb?imdbId=%s", imdbId), nil)
 	if err != nil {
-		return LookupMovieByImdbidResponse{}, err
+		return MovieLookupResponse{}, err
 	}
-	var lMBIR LookupMovieByImdbidResponse
+	var lMBIR MovieLookupResponse
 	err = util.ParseJson(body, &lMBIR)
 	if err != nil {
-		return LookupMovieByImdbidResponse{}, err
+		return MovieLookupResponse{}, err
 	}
 	return lMBIR, nil
 }
@@ -109,22 +155,22 @@ func (r *RadarrClient) LookupMovieByImdbid(imdbId string) (LookupMovieByImdbidRe
 // Add the movie to Radarr
 //
 // monitor : "MovieOnly" | "MovieandCollection" | "None"
-func (r *RadarrClient) AddMovie(title string, qualityProfileId int, tmdbId int, rootFolderPath string, monitored bool, searchForMovie bool, monitorProfile string) error {
+func (r *RadarrClient) AddMovie(movieLookupData MovieLookupResponse, qualityProfileId int, rootFolderPath string, monitored bool, searchForMovie bool, monitorProfile string) error {
 	type addMoviePayload struct {
-		Title            string `json:"title"`
-		QualityProfileId int    `json:"qualityProfileId"`
-		TmdbId           int    `json:"tmdbId"`
-		RootFolderPath   string `json:"rootFolderPath"`
-		Monitored        bool   `json:"monitored"`
-		AddOptions       struct {
+		MovieLookupResponse
+		RootFolderPath string `json:"rootFolderPath"`
+		AddOptions     struct {
 			SearchForMovie bool   `json:"searchForMovie"`
 			Monitor        string `json:"monitor"`
 		} `json:"addOptions"`
 	}
-	payload := addMoviePayload{Title: title, QualityProfileId: qualityProfileId, TmdbId: tmdbId, RootFolderPath: rootFolderPath, Monitored: monitored, AddOptions: struct {
+	payload := addMoviePayload{MovieLookupResponse: movieLookupData, AddOptions: struct {
 		SearchForMovie bool   `json:"searchForMovie"`
 		Monitor        string `json:"monitor"`
 	}{SearchForMovie: searchForMovie, Monitor: monitorProfile}}
+	payload.QualityProfileID = qualityProfileId
+	payload.Monitored = monitored
+	payload.RootFolderPath = rootFolderPath
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err

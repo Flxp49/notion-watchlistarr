@@ -20,8 +20,8 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestLookupSeriesByTvdbid(t *testing.T) {
-	series, err := Sonarr.LookupSeriesByImdbid("")
+func TestLookupSeries(t *testing.T) {
+	series, err := Sonarr.LookupSeries("imdb", "tt0903747")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,17 +29,24 @@ func TestLookupSeriesByTvdbid(t *testing.T) {
 }
 
 func TestAddSeries(t *testing.T) {
-	err := Sonarr.AddSeries("Doom Patrol", 4, 355622, "D:\\Media\\Shows", true, true, true, "LastSeason")
+	series, err := Sonarr.LookupSeries("imdb", "tt0903747")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Sonarr.AddSeries(series, 4, "D:\\Media\\Shows", true, true, true, "Pilot")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestAddExistingSeries(t *testing.T) {
-	err := Sonarr.AddSeries("Lockwood & Co.", 4, 422028, "D:\\Media\\Shows", true, true, true, "AllEpisodes")
+	series, err := Sonarr.LookupSeries("tvdb", "422028")
 	if err != nil {
-		t.Log(err)
-		t.Log(util.ExistingTitleErrorHandle(err))
+		t.Fatal(err)
+	}
+	err = Sonarr.AddSeries(series, 4, "D:\\Media\\Shows", true, true, true, "AllEpisodes")
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
