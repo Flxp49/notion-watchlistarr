@@ -24,18 +24,17 @@ func main() {
 	}
 	defer f.Close()
 
+	err = godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
 	var programLevel = new(slog.LevelVar)
 	Logger := slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: programLevel}))
 	if os.Getenv("LOG_LEVEL") == "0" {
 		programLevel.Set(slog.LevelDebug)
 	} else {
 		programLevel.Set(slog.LevelError)
-	}
-
-	err = godotenv.Load()
-	if err != nil {
-		Logger.Error("Error loading .env file", "Error", err)
-		os.Exit(1)
 	}
 
 	R := radarr.InitRadarrClient(os.Getenv("RADARR_KEY"), os.Getenv("RADARR_HOST"))

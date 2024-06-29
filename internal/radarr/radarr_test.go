@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/flxp49/notion-watchlistarr/internal/util"
 	"github.com/joho/godotenv"
 )
 
@@ -20,6 +19,14 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestLookupMovie(t *testing.T) {
+	movie, err := Radarr.LookupMovie("tt0118929")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(movie)
+}
+
 func TestGetQueueDetails(t *testing.T) {
 	downloadStatus, err := Radarr.GetQueueDetails(126)
 	if err != nil {
@@ -29,16 +36,13 @@ func TestGetQueueDetails(t *testing.T) {
 }
 
 func TestAddMovie(t *testing.T) {
-	err := Radarr.AddMovie("American Psycho", 4, 1359, "D:\\Media\\Movies", true, true, "MovieandCollection")
+	movie, err := Radarr.LookupMovie("tt0078788")
 	if err != nil {
 		t.Fatal(err)
 	}
-}
-func TestAddExistingMovie(t *testing.T) {
-	err := Radarr.AddMovie("Finch", 4, 522402, "D:\\Media\\Movies", true, true, "MovieandCollection")
+	err = Radarr.AddMovie(movie, 4, "D:\\Media\\Movies", true, true, "MovieOnly")
 	if err != nil {
-		t.Log(err)
-		t.Log(util.ExistingTitleErrorHandle(err))
+		t.Fatal(err)
 	}
 }
 

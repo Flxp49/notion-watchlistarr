@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
@@ -86,50 +87,106 @@ func (s *SonarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
 
 }
 
-type LookupSeriesByImdbidResponse []struct {
-	TvdbId int    `json:"tvdbId"`
-	Title  string `json:"title"`
+type LookupSeriesResponse struct {
+	Title     string `json:"title"`
+	SortTitle string `json:"sortTitle"`
+	Status    string `json:"status"`
+	Ended     bool   `json:"ended"`
+	Overview  string `json:"overview"`
+	Network   string `json:"network"`
+	AirTime   string `json:"airTime"`
+	Images    []struct {
+		CoverType string `json:"coverType"`
+		URL       string `json:"url"`
+		RemoteURL string `json:"remoteUrl"`
+	} `json:"images"`
+	OriginalLanguage struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"originalLanguage"`
+	RemotePoster string `json:"remotePoster"`
+	Seasons      []struct {
+		SeasonNumber int  `json:"seasonNumber"`
+		Monitored    bool `json:"monitored"`
+	} `json:"seasons"`
+	Year              int           `json:"year"`
+	QualityProfileID  int           `json:"qualityProfileId"`
+	SeasonFolder      bool          `json:"seasonFolder"`
+	Monitored         bool          `json:"monitored"`
+	MonitorNewItems   string        `json:"monitorNewItems"`
+	UseSceneNumbering bool          `json:"useSceneNumbering"`
+	Runtime           int           `json:"runtime"`
+	TvdbID            int           `json:"tvdbId"`
+	TvRageID          int           `json:"tvRageId"`
+	TvMazeID          int           `json:"tvMazeId"`
+	FirstAired        time.Time     `json:"firstAired"`
+	LastAired         time.Time     `json:"lastAired"`
+	SeriesType        string        `json:"seriesType"`
+	CleanTitle        string        `json:"cleanTitle"`
+	ImdbID            string        `json:"imdbId"`
+	TitleSlug         string        `json:"titleSlug"`
+	Folder            string        `json:"folder"`
+	Certification     string        `json:"certification"`
+	Genres            []string      `json:"genres"`
+	Tags              []interface{} `json:"tags"`
+	Added             time.Time     `json:"added"`
+	Ratings           struct {
+		Votes int     `json:"votes"`
+		Value float32 `json:"value"`
+	} `json:"ratings"`
+	Statistics struct {
+		SeasonCount       int     `json:"seasonCount"`
+		EpisodeFileCount  int     `json:"episodeFileCount"`
+		EpisodeCount      int     `json:"episodeCount"`
+		TotalEpisodeCount int     `json:"totalEpisodeCount"`
+		SizeOnDisk        float32 `json:"sizeOnDisk"`
+		PercentOfEpisodes float32 `json:"percentOfEpisodes"`
+	} `json:"statistics"`
+	LanguageProfileID int `json:"languageProfileId"`
 }
 
-// lookup series via Sonarr to get tvdbid
-func (s *SonarrClient) LookupSeriesByImdbid(imdbId string) (LookupSeriesByImdbidResponse, error) {
-
-	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/series/lookup?term=imdbId:%s", imdbId), nil)
-	if err != nil {
-		return nil, err
+// lookup series by imdbid or tvdbid via Sonarr to get series data
+//
+// idType : "imdb" || "tvdb"
+func (s *SonarrClient) LookupSeries(idType string, id string) (LookupSeriesResponse, error) {
+	if !(idType == "imdb" || idType == "tvdb") {
+		return LookupSeriesResponse{}, errors.New(`idType to be either "imdb" || "tvdb"`)
 	}
-	var lSBIR LookupSeriesByImdbidResponse
+	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/series/lookup?term=%s:%s", idType, id), nil)
+	if err != nil {
+		return LookupSeriesResponse{}, err
+	}
+	var lSBIR []LookupSeriesResponse
 	err = util.ParseJson(body, &lSBIR)
 	if err != nil || len(lSBIR) == 0 {
 		if err == nil {
-			err = errors.New("no title found for imdbId")
+			err = errors.New("no title found via lookup")
 		}
-		return nil, err
+		return LookupSeriesResponse{}, err
 	}
-	return lSBIR, nil
+	return lSBIR[0], nil
 }
 
 // Add the series to Sonarr
 //
-// monitor : "AllEpisodes" | "FutureEpisodes" | "MissingEpisodes" | "ExistingEpisodes" | "RecentEpisodes" | "PilotEpisode" | "FirstSeason" | "LastSeason" | "MonitorSpecials" | "UnmonitorSpecials" | "None"
-func (s *SonarrClient) AddSeries(title string, qualityProfileId int, TvdbId int, rootFolderPath string, monitored bool, seasonFolder bool, SearchForMissingEpisodes bool, monitorProfile string) error {
+// monitor : "All" | "Future" | "Missing" | "Existing" | "Recent" | "Pilot" | "FirstSeason" | "LastSeason" | "MonitorSpecials" | "UnmonitorSpecials"
+func (s *SonarrClient) AddSeries(seriesLookupData LookupSeriesResponse, qualityProfileId int, rootFolderPath string, monitored bool, seasonFolder bool, SearchForMissingEpisodes bool, monitorProfile string) error {
 	type addSeriesPayload struct {
-		Title            string `json:"title"`
-		QualityProfileId int    `json:"qualityProfileId"`
-		TvdbId           int    `json:"tvdbId"`
-		RootFolderPath   string `json:"rootFolderPath"`
-		Monitored        bool   `json:"monitored"`
-		SeasonFolder     bool   `json:"seasonFolder"`
-		AddOptions       struct {
+		LookupSeriesResponse
+		RootFolderPath string `json:"rootFolderPath"`
+		AddOptions     struct {
 			SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
-			Monitor                  string `json:"monitor"`
+			MonitorProfile           string `json:"monitor"`
 		} `json:"addOptions"`
 	}
-	payload := addSeriesPayload{Title: title, QualityProfileId: qualityProfileId, TvdbId: TvdbId, RootFolderPath: rootFolderPath, Monitored: monitored, SeasonFolder: seasonFolder, AddOptions: struct {
+	payload := addSeriesPayload{LookupSeriesResponse: seriesLookupData, AddOptions: struct {
 		SearchForMissingEpisodes bool   `json:"searchForMissingEpisodes"`
-		Monitor                  string `json:"monitor"`
-	}{SearchForMissingEpisodes: SearchForMissingEpisodes, Monitor: monitorProfile}}
-
+		MonitorProfile           string `json:"monitor"`
+	}{SearchForMissingEpisodes: SearchForMissingEpisodes, MonitorProfile: monitorProfile}}
+	payload.QualityProfileID = qualityProfileId
+	payload.Monitored = monitored
+	payload.RootFolderPath = rootFolderPath
+	payload.SeasonFolder = seasonFolder
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err

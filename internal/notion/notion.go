@@ -19,17 +19,16 @@ import (
 //	}
 
 var MonitorProfiles = map[string]string{
-	"TV Series: All Episodes":       "AllEpisodes",
-	"TV Series: Future Episodes":    "FutureEpisodes",
-	"TV Series: Missing Episodes":   "MissingEpisodes",
-	"TV Series: Existing Episodes":  "ExistingEpisodes",
-	"TV Series: Recent Episodes":    "RecentEpisodes",
-	"TV Series: Pilot Episode":      "PilotEpisode",
+	"TV Series: All Episodes":       "All",
+	"TV Series: Future Episodes":    "Future",
+	"TV Series: Missing Episodes":   "Missing",
+	"TV Series: Existing Episodes":  "Existing",
+	"TV Series: Recent Episodes":    "Recent",
+	"TV Series: Pilot Episode":      "Pilot",
 	"TV Series: First Season":       "FirstSeason",
 	"TV Series: Last Season":        "LastSeason",
 	"TV Series: Monitor Specials":   "MonitorSpecials",
 	"TV Series: Unmonitor Specials": "UnmonitorSpecials",
-	"TV Series: None":               "None",
 	"Movie: Movie Only":             "MovieOnly",
 	"Movie: Collection":             "MovieandCollection",
 }

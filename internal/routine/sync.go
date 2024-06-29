@@ -2,7 +2,6 @@ package routine
 
 import (
 	"log/slog"
-	"strconv"
 	"time"
 
 	"github.com/flxp49/notion-watchlistarr/internal/notion"
@@ -22,14 +21,14 @@ start:
 	}
 	Logger.Info("RadarrSync", "Status", "Fetched titles from DB", "No of titles fetched", len(movies.Results))
 	for _, m := range movies.Results {
-		tmdbid, err := R.LookupMovieByImdbid(m.Properties.Imdbid.Rich_text[0].Plain_text)
+		movieLookupInfo, err := R.LookupMovie(m.Properties.Imdbid.Rich_text[0].Plain_text)
 		if err != nil {
-			Logger.Error("RadarrSync", "Failed to fetch tmdbid via radarr of imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
+			Logger.Error("RadarrSync", "Failed to fetch lookup movie via radarr by imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
 			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 			continue
 		}
 		//check if movie exists or not
-		movieLibraryData, err := R.GetMovie(tmdbid.Tmdbid)
+		movieLibraryData, err := R.GetMovie(movieLookupInfo.TmdbID)
 		if err != nil {
 			Logger.Error("RadarrSync", "Could not get title details from Radarr", err)
 			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
@@ -68,39 +67,39 @@ start:
 					continue
 				}
 			}
-		} else {
-			// add movie
-			// set monitor property
-			if m.Properties.MonitorProfile.Select.Name == "" {
-				monitorProfile, err := N.GetNotionMonitorProp(R.DefaultMonitorProfile, "Movie")
-				if err != nil {
-					Logger.Error("RadarrSync", "Could not get notion monitor property for monitor profile", err)
-					N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
-					continue
-				}
-				m.Properties.MonitorProfile.Select.Name = monitorProfile
-			}
-			//get rootpath and qualityprofile properties for notion db
-			qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(R.DefaultQualityProfile, R.DefaultRootPath, "Movie")
+			continue
+		}
+		// movie doesnt exist so lets add it
+		// set monitor property
+		if m.Properties.MonitorProfile.Select.Name == "" {
+			monitorProfile, err := N.GetNotionMonitorProp(R.DefaultMonitorProfile, "Movie")
 			if err != nil {
-				Logger.Error("RadarrSync", "Failed to fetch notion DB qualityprofile and rootpath property", err)
+				Logger.Error("RadarrSync", "Could not get notion monitor property for monitor profile", err)
 				N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 				continue
 			}
-			// set root folder property
-			if m.Properties.RootFolder.Select.Name == "" {
-				m.Properties.RootFolder.Select.Name = rootPathProp
-			}
-			// set qualty profile property
-			if m.Properties.QualityProfile.Select.Name == "" {
-				m.Properties.QualityProfile.Select.Name = qualityProp
-			}
-			Logger.Info("RadarrSync", "Status", "Adding Title", "Title", tmdbid.OriginalTitle)
-			err = R.AddMovie(tmdbid.OriginalTitle, N.Qpid[m.Properties.QualityProfile.Select.Name], tmdbid.Tmdbid, N.Rpid[m.Properties.RootFolder.Select.Name], true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name])
-			if err != nil {
-				Logger.Error("RadarrSync", "Error adding title", tmdbid.OriginalTitle, "Error", err)
-				N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
-			}
+			m.Properties.MonitorProfile.Select.Name = monitorProfile
+		}
+		//get rootpath and qualityprofile properties for notion db
+		qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(R.DefaultQualityProfile, R.DefaultRootPath, "Movie")
+		if err != nil {
+			Logger.Error("RadarrSync", "Failed to fetch notion DB qualityprofile and rootpath property", err)
+			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
+			continue
+		}
+		// set root folder property
+		if m.Properties.RootFolder.Select.Name == "" {
+			m.Properties.RootFolder.Select.Name = rootPathProp
+		}
+		// set qualty profile property
+		if m.Properties.QualityProfile.Select.Name == "" {
+			m.Properties.QualityProfile.Select.Name = qualityProp
+		}
+		Logger.Info("RadarrSync", "Status", "Adding Title", "Title", movieLookupInfo.Title)
+		err = R.AddMovie(movieLookupInfo, N.Qpid[m.Properties.QualityProfile.Select.Name], N.Rpid[m.Properties.RootFolder.Select.Name], true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name])
+		if err != nil {
+			Logger.Error("RadarrSync", "Failed to add title for download", err)
+			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 		}
 	}
 	time.Sleep(t * time.Second)
@@ -118,27 +117,25 @@ start:
 	}
 	Logger.Info("SonarrSync", "Status", "Fetched titles from DB", "No of titles fetched", len(data.Results))
 	for _, m := range data.Results {
-		var seriesName string
-		var seriesTvDBID int
-		tvdbInfo, err := S.LookupSeriesByImdbid(m.Properties.Imdbid.Rich_text[0].Plain_text)
+		seriesLookupInfo, err := S.LookupSeries("imdb", m.Properties.Imdbid.Rich_text[0].Plain_text)
 		if err != nil {
-			Logger.Warn("SonarrSync", "Failed to fetch tvdbid via sonarr of imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
+			Logger.Warn("SonarrSync", "Failed to lookup series via sonarr by imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
 			// use secondary search
-			fallbackTvdbInfo, err := util.GetSeriesByRemoteID(m.Properties.Imdbid.Rich_text[0].Plain_text)
+			fallbackTvdb, err := util.GetSeriesByRemoteID(m.Properties.Imdbid.Rich_text[0].Plain_text)
 			if err != nil {
 				Logger.Error("SonarrSync", "Failed to fetch tvdbid of imdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
 				N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 				continue
 			}
-			seriesName = fallbackTvdbInfo.Series.SeriesName
-			id, _ := strconv.Atoi(fallbackTvdbInfo.Series.Seriesid)
-			seriesTvDBID = id
-		} else {
-			seriesName = tvdbInfo[0].Title
-			seriesTvDBID = tvdbInfo[0].TvdbId
+			seriesLookupInfo, err = S.LookupSeries("tvdb", fallbackTvdb.Series.Seriesid)
+			if err != nil {
+				Logger.Error("SonarrSync", "Failed to lookup series by tvdbid", m.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
+				N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
+				continue
+			}
 		}
 		//check if series exists or not
-		seriesLibraryData, err := S.GetSeries(seriesTvDBID)
+		seriesLibraryData, err := S.GetSeries(seriesLookupInfo.TvdbID)
 		if err != nil {
 			Logger.Error("SonarrSync", "Could not get title details from Sonarr", err)
 			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
@@ -178,39 +175,39 @@ start:
 					continue
 				}
 			}
-		} else {
-			// add series
-			// set monitor property
-			if m.Properties.MonitorProfile.Select.Name == "" {
-				monitorProfile, err := N.GetNotionMonitorProp(S.DefaultMonitorProfile, "TV Series")
-				if err != nil {
-					Logger.Error("SonarrSync", "Could not get notion monitor property for monitor profile", err)
-					N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
-					continue
-				}
-				m.Properties.MonitorProfile.Select.Name = monitorProfile
-			}
-			//get rootpath and qualityprofile properties for notion db
-			qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(S.DefaultQualityProfile, S.DefaultRootPath, "TV Series")
+			continue
+		}
+		// series doesnt exist so lets add it
+		// set monitor property
+		if m.Properties.MonitorProfile.Select.Name == "" {
+			monitorProfile, err := N.GetNotionMonitorProp(S.DefaultMonitorProfile, "TV Series")
 			if err != nil {
-				Logger.Error("SonarrSync", "Failed to fetch notion DB qualityprofile and rootpath property", err)
+				Logger.Error("SonarrSync", "Could not get notion monitor property for monitor profile", err)
 				N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 				continue
 			}
-			// set root folder property
-			if m.Properties.RootFolder.Select.Name == "" {
-				m.Properties.RootFolder.Select.Name = rootPathProp
-			}
-			// set quality profile property
-			if m.Properties.QualityProfile.Select.Name == "" {
-				m.Properties.QualityProfile.Select.Name = qualityProp
-			}
-			Logger.Info("SonarrSync", "Status", "Adding Title", "Title", seriesName)
-			err = S.AddSeries(seriesName, N.Qpid[m.Properties.QualityProfile.Select.Name], seriesTvDBID, N.Rpid[m.Properties.RootFolder.Select.Name], true, true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name])
-			if err != nil {
-				Logger.Error("SonarrSync", "Failed to add title for download", err)
-				N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "s")
-			}
+			m.Properties.MonitorProfile.Select.Name = monitorProfile
+		}
+		//get rootpath and qualityprofile properties for notion db
+		qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(S.DefaultQualityProfile, S.DefaultRootPath, "TV Series")
+		if err != nil {
+			Logger.Error("SonarrSync", "Failed to fetch notion DB qualityprofile and rootpath property", err)
+			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
+			continue
+		}
+		// set root folder property
+		if m.Properties.RootFolder.Select.Name == "" {
+			m.Properties.RootFolder.Select.Name = rootPathProp
+		}
+		// set quality profile property
+		if m.Properties.QualityProfile.Select.Name == "" {
+			m.Properties.QualityProfile.Select.Name = qualityProp
+		}
+		Logger.Info("SonarrSync", "Status", "Adding Title", "Title", seriesLookupInfo.Title)
+		err = S.AddSeries(seriesLookupInfo, N.Qpid[m.Properties.QualityProfile.Select.Name], N.Rpid[m.Properties.RootFolder.Select.Name], true, true, true, notion.MonitorProfiles[m.Properties.MonitorProfile.Select.Name])
+		if err != nil {
+			Logger.Error("SonarrSync", "Failed to add title for download", err)
+			N.UpdateDownloadStatus(m.Pgid, false, "Error", "", "")
 		}
 	}
 	time.Sleep(t * time.Second)
