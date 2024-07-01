@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/flxp49/notion-watchlistarr/internal/constant"
 	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
@@ -250,7 +251,7 @@ func (s *SonarrClient) GetQueueDetails(seriesId int) (util.GetQueueDetailsRespon
 func (s *SonarrClient) SonarrDefaults(sonarrDefaultRootPath string, sonarrDefaultQualityProfile string, sonarrDefaultMonitorProfile string, rpid map[string]string, qpid map[string]int) error {
 	//set default monitor
 	if sonarrDefaultMonitorProfile == "" {
-		s.DefaultMonitorProfile = "AllEpisodes"
+		s.DefaultMonitorProfile = constant.AllEpisodes
 	} else {
 		s.DefaultMonitorProfile = sonarrDefaultMonitorProfile
 	}
@@ -266,7 +267,16 @@ func (s *SonarrClient) SonarrDefaults(sonarrDefaultRootPath string, sonarrDefaul
 	if sonarrDefaultRootPath == "" {
 		s.DefaultRootPath = sonarrRootPaths[0].Path
 	} else {
-		s.DefaultRootPath = sonarrDefaultRootPath
+		//check if user passed root path is valid or not
+		for _, path := range sonarrRootPaths {
+			if util.CheckSamePath(path.Path, sonarrDefaultRootPath) {
+				s.DefaultRootPath = sonarrDefaultRootPath
+				break
+			}
+		}
+		if s.DefaultRootPath == "" {
+			return errors.New("invalid sonarr default root path passed")
+		}
 	}
 	// Quality Profiles
 	sonarrQualityProfiles, err := s.GetQualityProfiles()
@@ -291,7 +301,7 @@ func (s *SonarrClient) SonarrDefaults(sonarrDefaultRootPath string, sonarrDefaul
 }
 
 func InitSonarrClient(apikey string, hostpath string) *SonarrClient {
-	s := &SonarrClient{hostpath: hostpath}
+	s := &SonarrClient{hostpath: hostpath, DefaultRootPath: "", DefaultMonitorProfile: ""}
 	s.req, _ = http.NewRequest("", "", nil)
 	s.req.Header.Add("X-Api-Key", apikey)
 	s.req.Header.Add("Content-Type", "application/json")

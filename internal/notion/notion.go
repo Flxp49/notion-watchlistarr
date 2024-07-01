@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/flxp49/notion-watchlistarr/internal/constant"
 	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
@@ -19,18 +20,18 @@ import (
 //	}
 
 var MonitorProfiles = map[string]string{
-	"TV Series: All Episodes":       "All",
-	"TV Series: Future Episodes":    "Future",
-	"TV Series: Missing Episodes":   "Missing",
-	"TV Series: Existing Episodes":  "Existing",
-	"TV Series: Recent Episodes":    "Recent",
-	"TV Series: Pilot Episode":      "Pilot",
-	"TV Series: First Season":       "FirstSeason",
-	"TV Series: Last Season":        "LastSeason",
-	"TV Series: Monitor Specials":   "MonitorSpecials",
-	"TV Series: Unmonitor Specials": "UnmonitorSpecials",
-	"Movie: Movie Only":             "MovieOnly",
-	"Movie: Collection":             "MovieandCollection",
+	constant.NotionOptionAllEpisodes:       constant.AllEpisodes,
+	constant.NotionOptionFutureEpisodes:    constant.FutureEpisodes,
+	constant.NotionOptionMissingEpisodes:   constant.MissingEpisodes,
+	constant.NotionOptionExistingEpisodes:  constant.ExistingEpisodes,
+	constant.NotionOptionRecentpisodes:     constant.RecentEpisodes,
+	constant.NotionOptionPilotEpisode:      constant.PilotEpisode,
+	constant.NotionOptionFirstSeason:       constant.FirstSeason,
+	constant.NotionOptionLastSeason:        constant.LastSeason,
+	constant.NotionOptionMonitorSpecials:   constant.MonitorSpecials,
+	constant.NotionOptionUnmonitorSpecials: constant.UnmonitorSpecials,
+	constant.NotionOptionMovieOnly:         constant.MovieOnly,
+	constant.NotionOptionCollection:        constant.MovieAndCollection,
 }
 
 type NotionClient struct {
