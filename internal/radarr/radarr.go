@@ -235,7 +235,12 @@ func (r *RadarrClient) RadarrDefaults(radarrDefaultRootPath string, radarrDefaul
 	if radarrDefaultMonitorProfile == "" {
 		r.DefaultMonitorProfile = constant.MovieOnly
 	} else {
-		r.DefaultMonitorProfile = radarrDefaultMonitorProfile
+		switch radarrDefaultMonitorProfile {
+		case constant.MovieOnly, constant.MovieAndCollection:
+			r.DefaultMonitorProfile = radarrDefaultMonitorProfile
+		default:
+			return errors.New("invalid radarr monitor profile passed")
+		}
 	}
 	// Root path
 	radarrRootPaths, err := r.GetRootFolder()

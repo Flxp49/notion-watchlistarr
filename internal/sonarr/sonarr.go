@@ -253,7 +253,13 @@ func (s *SonarrClient) SonarrDefaults(sonarrDefaultRootPath string, sonarrDefaul
 	if sonarrDefaultMonitorProfile == "" {
 		s.DefaultMonitorProfile = constant.AllEpisodes
 	} else {
-		s.DefaultMonitorProfile = sonarrDefaultMonitorProfile
+		switch sonarrDefaultMonitorProfile {
+		case constant.AllEpisodes, constant.ExistingEpisodes, constant.FirstSeason, constant.FutureEpisodes, constant.LastSeason, constant.MissingEpisodes, constant.MonitorSpecials, constant.RecentEpisodes, constant.PilotEpisode, constant.UnmonitorSpecials:
+			s.DefaultMonitorProfile = sonarrDefaultMonitorProfile
+
+		default:
+			return errors.New("invalid sonarr monitor profile passed")
+		}
 	}
 	// Root path
 	sonarrRootPaths, err := s.GetRootFolder()

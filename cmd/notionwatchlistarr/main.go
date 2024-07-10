@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -38,10 +37,14 @@ func main() {
 		Logger.Error("Error loading env variables", "Error", err)
 		os.Exit(1)
 	}
-	fmt.Printf("%+v\n", cfg)
 
 	if cfg.LogDebug {
 		programLevel.Set(slog.LevelDebug)
+	}
+
+	if !(cfg.RadarrInit || cfg.SonarrInit) {
+		Logger.Error("Both Radarr and Sonarr cannot be disabled")
+		os.Exit(1)
 	}
 
 	R := radarr.InitRadarrClient(cfg.RadarrKey, cfg.RadarrHost)
