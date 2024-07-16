@@ -57,7 +57,7 @@ func main() {
 
 Start:
 	if !waitForService(cfg.RadarrInit, cfg.RadarrHost, cfg.SonarrInit, cfg.SonarrHost) {
-		Logger.Error("Radarr / Sonarr servies not available, Retrying...")
+		Logger.Error("Radarr / Sonarr services not available, Retrying...")
 		time.Sleep(time.Second * 30)
 		goto Start
 	}
