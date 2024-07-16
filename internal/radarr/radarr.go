@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/flxp49/notion-watchlistarr/internal/constant"
 	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
@@ -232,9 +233,14 @@ func (r *RadarrClient) GetQueueDetails(movieID int) (util.GetQueueDetailsRespons
 func (r *RadarrClient) RadarrDefaults(radarrDefaultRootPath string, radarrDefaultQualityProfile string, radarrDefaultMonitorProfile string, rpid map[string]string, qpid map[string]int) error {
 	//set default monitor
 	if radarrDefaultMonitorProfile == "" {
-		r.DefaultMonitorProfile = "MovieOnly"
+		r.DefaultMonitorProfile = constant.MovieOnly
 	} else {
-		r.DefaultMonitorProfile = radarrDefaultMonitorProfile
+		switch radarrDefaultMonitorProfile {
+		case constant.MovieOnly, constant.MovieAndCollection:
+			r.DefaultMonitorProfile = radarrDefaultMonitorProfile
+		default:
+			return errors.New("invalid radarr monitor profile passed")
+		}
 	}
 	// Root path
 	radarrRootPaths, err := r.GetRootFolder()
@@ -248,7 +254,16 @@ func (r *RadarrClient) RadarrDefaults(radarrDefaultRootPath string, radarrDefaul
 	if radarrDefaultRootPath == "" {
 		r.DefaultRootPath = radarrRootPaths[0].Path
 	} else {
-		r.DefaultRootPath = radarrDefaultRootPath
+		//check if user passed root path is valid or not
+		for _, path := range radarrRootPaths {
+			if util.CheckSamePath(path.Path, radarrDefaultRootPath) {
+				r.DefaultRootPath = radarrDefaultRootPath
+				break
+			}
+		}
+		if r.DefaultRootPath == "" {
+			return errors.New("invalid radarr default root path passed")
+		}
 	}
 	// Quality Profiles
 	radarrQualityProfiles, err := r.GetQualityProfiles()
@@ -273,7 +288,7 @@ func (r *RadarrClient) RadarrDefaults(radarrDefaultRootPath string, radarrDefaul
 }
 
 func InitRadarrClient(apikey string, hostpath string) *RadarrClient {
-	r := &RadarrClient{hostpath: hostpath}
+	r := &RadarrClient{hostpath: hostpath, DefaultRootPath: "", DefaultMonitorProfile: ""}
 	r.req, _ = http.NewRequest("", "", nil)
 	r.req.Header.Add("X-Api-Key", apikey)
 	r.req.Header.Add("Content-Type", "application/json")

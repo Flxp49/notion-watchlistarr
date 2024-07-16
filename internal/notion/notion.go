@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/flxp49/notion-watchlistarr/internal/constant"
 	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
@@ -19,18 +20,18 @@ import (
 //	}
 
 var MonitorProfiles = map[string]string{
-	"TV Series: All Episodes":       "All",
-	"TV Series: Future Episodes":    "Future",
-	"TV Series: Missing Episodes":   "Missing",
-	"TV Series: Existing Episodes":  "Existing",
-	"TV Series: Recent Episodes":    "Recent",
-	"TV Series: Pilot Episode":      "Pilot",
-	"TV Series: First Season":       "FirstSeason",
-	"TV Series: Last Season":        "LastSeason",
-	"TV Series: Monitor Specials":   "MonitorSpecials",
-	"TV Series: Unmonitor Specials": "UnmonitorSpecials",
-	"Movie: Movie Only":             "MovieOnly",
-	"Movie: Collection":             "MovieandCollection",
+	constant.NotionOptionAllEpisodes:       constant.AllEpisodes,
+	constant.NotionOptionFutureEpisodes:    constant.FutureEpisodes,
+	constant.NotionOptionMissingEpisodes:   constant.MissingEpisodes,
+	constant.NotionOptionExistingEpisodes:  constant.ExistingEpisodes,
+	constant.NotionOptionRecentpisodes:     constant.RecentEpisodes,
+	constant.NotionOptionPilotEpisode:      constant.PilotEpisode,
+	constant.NotionOptionFirstSeason:       constant.FirstSeason,
+	constant.NotionOptionLastSeason:        constant.LastSeason,
+	constant.NotionOptionMonitorSpecials:   constant.MonitorSpecials,
+	constant.NotionOptionUnmonitorSpecials: constant.UnmonitorSpecials,
+	constant.NotionOptionMovieOnly:         constant.MovieOnly,
+	constant.NotionOptionCollection:        constant.MovieAndCollection,
 }
 
 type NotionClient struct {
@@ -116,18 +117,18 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 	if status != "Error" && status != "Not Downloaded" {
 		payload.Properties.QualityProfile = struct {
 			Select *struct {
-				Name string "json:\"name\""
-			} "json:\"select\""
+				Name string `json:"name"`
+			} `json:"select"`
 		}{Select: &struct {
-			Name string "json:\"name\""
+			Name string `json:"name"`
 		}{Name: qualityProfile}}
 
 		payload.Properties.RootFolder = struct {
 			Select *struct {
-				Name string "json:\"name\""
-			} "json:\"select\""
+				Name string `json:"name"`
+			} `json:"select"`
 		}{Select: &struct {
-			Name string "json:\"name\""
+			Name string `json:"name"`
 		}{Name: rootPath}}
 	}
 	data, err := json.Marshal(payload)
@@ -189,26 +190,26 @@ func (n *NotionClient) QueryDB(mtype string) (QueryDBResponse, error) {
 	}
 	payload := queryDBPayload{Filter: struct {
 		And []struct {
-			Property string "json:\"property\""
+			Property string `json:"property"`
 			Checkbox *struct {
-				Equals bool "json:\"equals\""
-			} "json:\"checkbox,omitempty\""
+				Equals bool `json:"equals"`
+			} `json:"checkbox,omitempty"`
 			Select *struct {
-				Equals string "json:\"equals\""
-			} "json:\"select,omitempty\""
+				Equals string `json:"equals"`
+			} `json:"select,omitempty"`
 		} `json:"and"`
 	}{And: []struct {
-		Property string "json:\"property\""
+		Property string `json:"property"`
 		Checkbox *struct {
-			Equals bool "json:\"equals\""
-		} "json:\"checkbox,omitempty\""
+			Equals bool `json:"equals"`
+		} `json:"checkbox,omitempty"`
 		Select *struct {
-			Equals string "json:\"equals\""
-		} "json:\"select,omitempty\""
+			Equals string `json:"equals"`
+		} `json:"select,omitempty"`
 	}{{Property: "Download", Checkbox: &struct {
-		Equals bool "json:\"equals\""
+		Equals bool `json:"equals"`
 	}{Equals: true}}, {Property: "Type", Select: &struct {
-		Equals string "json:\"equals\""
+		Equals string `json:"equals"`
 	}{Equals: mtype}}}}, Page_size: 5}
 
 	data, _ := json.Marshal(payload)
@@ -377,8 +378,8 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 	}
 	for _, val := range sMap {
 		payload.Properties.DownloadStatus.Select.Options = append(payload.Properties.DownloadStatus.Select.Options, struct {
-			Name  string "json:\"name\""
-			Color string "json:\"color\""
+			Name  string `json:"name"`
+			Color string `json:"color"`
 		}{Name: val.name, Color: val.color})
 	}
 	payload.Properties.Download.Type = "checkbox"
