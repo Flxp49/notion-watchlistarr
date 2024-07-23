@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/flxp49/notion-watchlistarr/internal/constant"
 	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
@@ -43,7 +44,7 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 		if !movieData.DeletedFiles {
 			return
 		}
-		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Not Downloaded", "", "")
+		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Not Downloaded", "", "", "")
 		if err != nil {
 			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
 		}
@@ -60,30 +61,38 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//get rootpath and qualityprofile properties for notion db
-	movieQualityProp, rootPathProp, err := s.N.GetNotionQualityAndRootProps(movie[0].QualityProfileId, movie[0].RootFolderPath, "Movie")
+	movieQualityProp, rootPathProp, err := s.N.GetNotionQualityAndRootProps(movie[0].QualityProfileID, movie[0].RootFolderPath, "Movie")
 	if err != nil {
 		s.Logger.Error("RadarrWebhook", "Failed to fetch notion DB property", err)
 		return
 	}
+	monitoredProfile := constant.MovieOnly
+	if movie[0].Collection.TmdbID != 0 {
+		collectionMonitored, _ := s.R.GetCollection(movie[0].Collection.TmdbID)
+		if collectionMonitored {
+			monitoredProfile = constant.MovieAndCollection
+		}
+	}
+	monitoredProfileNotionProp, _ := s.N.GetNotionMonitorProp(monitoredProfile, "Movie")
 	switch movieData.EventType {
 	case "MovieAdded":
 		//check if movie was imported manually (file already exists)
 		if movie[0].HasFile {
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", movieQualityProp, rootPathProp)
+			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", movieQualityProp, rootPathProp, monitoredProfileNotionProp)
 		} else {
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Queued", movieQualityProp, rootPathProp)
+			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Queued", movieQualityProp, rootPathProp, monitoredProfileNotionProp)
 		}
 		if err != nil {
 			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
 		}
 
 	case "Grab":
-		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", movieQualityProp, rootPathProp)
+		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", movieQualityProp, rootPathProp, monitoredProfileNotionProp)
 		if err != nil {
 			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
 		}
 	case "Download":
-		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", movieQualityProp, rootPathProp)
+		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", movieQualityProp, rootPathProp, monitoredProfileNotionProp)
 		if err != nil {
 			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
 		}
@@ -128,7 +137,7 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 		if !seriesData.DeletedFiles {
 			return
 		}
-		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Not Downloaded", "", "")
+		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Not Downloaded", "", "", "")
 		if err != nil {
 			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)
 		}
@@ -144,7 +153,7 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//get rootpath and qualityprofile properties for notion db
-	qualityProp, rootPathProp, err := s.N.GetNotionQualityAndRootProps(series[0].QualityProfileId, series[0].RootFolderPath, "TV Series")
+	qualityProp, rootPathProp, err := s.N.GetNotionQualityAndRootProps(series[0].QualityProfileID, series[0].RootFolderPath, "TV Series")
 	if err != nil {
 		s.Logger.Error("SonarrWebhook", "Failed to fetch notion DB property", err)
 		return
@@ -153,24 +162,24 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 	case "SeriesAdd":
 		//check if series was imported manually (file already exists)
 		if series[0].Statistics.PercentOfEpisodes == 100 {
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp)
+			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp, "")
 		} else {
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Queued", qualityProp, rootPathProp)
+			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Queued", qualityProp, rootPathProp, "")
 		}
 		if err != nil {
 			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)
 		}
 	case "Grab":
-		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", qualityProp, rootPathProp)
+		err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", qualityProp, rootPathProp, "")
 		if err != nil {
 			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)
 		}
 	case "Download":
 		// check if all episodes were downloaded or not
 		if series[0].Statistics.PercentOfEpisodes == 100 {
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp)
+			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp, "")
 		} else {
-			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", qualityProp, rootPathProp)
+			err = s.N.UpdateDownloadStatus(page.Results[0].Pgid, false, "Downloading", qualityProp, rootPathProp, "")
 		}
 		if err != nil {
 			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)

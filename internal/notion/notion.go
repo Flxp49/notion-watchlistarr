@@ -87,7 +87,7 @@ var sMap = map[string]statusMap{
 // download - true || false for checkbox property
 //
 // status - "Queued" , "Downloading" , "Downloaded" or "Error"
-func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status string, qualityProfile string, rootPath string) error {
+func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status string, qualityProfile string, rootPath string, monitorProfile string) error {
 	type updateDownloadStatus struct {
 		Properties struct {
 			Download struct {
@@ -109,6 +109,11 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 					Name string `json:"name"`
 				} `json:"select"`
 			} `json:"Root Folder"`
+			MonitorProfile *struct {
+				Select struct {
+					Name string `json:"name"`
+				} `json:"select"`
+			} `json:"Monitor,omitempty"`
 		} `json:"properties"`
 	}
 	payload := updateDownloadStatus{}
@@ -131,6 +136,16 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 			Name string `json:"name"`
 		}{Name: rootPath}}
 	}
+	if monitorProfile != "" {
+		payload.Properties.MonitorProfile = &struct {
+			Select struct {
+				Name string "json:\"name\""
+			} "json:\"select\""
+		}{Select: struct {
+			Name string "json:\"name\""
+		}{Name: monitorProfile}}
+	}
+
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err

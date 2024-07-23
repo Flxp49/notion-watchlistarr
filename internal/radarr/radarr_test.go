@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/flxp49/notion-watchlistarr/internal/constant"
 	"github.com/joho/godotenv"
 )
 
@@ -40,14 +41,32 @@ func TestAddMovie(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = Radarr.AddMovie(movie, 4, "D:\\Media\\Movies", true, true, "MovieOnly")
+	err = Radarr.AddMovie(movie, 4, "D:\\Media\\Movies", true, true, constant.MovieAndCollection)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestUpdateMovie(t *testing.T) {
+	movie, err := Radarr.GetMovie(63)
+	t.Log(movie)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = Radarr.UpdateMovie(movie[0], 4, true, true, constant.MovieAndCollection)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func TestGetCollection(t *testing.T) {
+	collection, err := Radarr.GetCollection(1262937)
+	t.Log(collection)
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestGetMovie(t *testing.T) {
-	movie, err := Radarr.GetMovie(557)
+	movie, err := Radarr.GetMovie(680)
 	if err != nil {
 		t.Fatal(err)
 	}

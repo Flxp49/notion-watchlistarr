@@ -48,17 +48,17 @@ func (r *RadarrClient) performReq(method string, endpoint string, data []byte) (
 }
 
 // getRootFolder Response struct
-type GetRootFolderResponse []struct {
+type GetRootFolderResponse struct {
 	Path string `json:"path"`
 }
 
 // Fetches the rootfolder path set in Radarr
-func (r *RadarrClient) GetRootFolder() (GetRootFolderResponse, error) {
+func (r *RadarrClient) GetRootFolder() ([]GetRootFolderResponse, error) {
 	_, body, err := r.performReq(http.MethodGet, "/rootfolder", nil)
 	if err != nil {
 		return nil, err
 	}
-	var rf GetRootFolderResponse
+	var rf []GetRootFolderResponse
 	err = util.ParseJson(body, &rf)
 	if err != nil {
 		return nil, err
@@ -68,18 +68,18 @@ func (r *RadarrClient) GetRootFolder() (GetRootFolderResponse, error) {
 }
 
 // getQualityProfile response struct
-type QualityProfileResponse []struct {
+type QualityProfileResponse struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
 }
 
 // Fetches the quality profiles
-func (r *RadarrClient) GetQualityProfiles() (QualityProfileResponse, error) {
+func (r *RadarrClient) GetQualityProfiles() ([]QualityProfileResponse, error) {
 	_, body, err := r.performReq(http.MethodGet, "/qualityprofile", nil)
 	if err != nil {
 		return nil, err
 	}
-	var qp QualityProfileResponse
+	var qp []QualityProfileResponse
 	err = util.ParseJson(body, &qp)
 	if err != nil {
 		return nil, err
@@ -183,19 +183,156 @@ func (r *RadarrClient) AddMovie(movieLookupData MovieLookupResponse, qualityProf
 	return nil
 }
 
+// update the movie in Radarr
+//
+// monitor : "MovieOnly" | "MovieandCollection" | "None"
+func (r *RadarrClient) UpdateMovie(movieData GetMovieResponse, qualityProfileId int, monitored bool, searchForMovie bool, monitorProfile string) error {
+	type addMoviePayload struct {
+		GetMovieResponse
+		AddOptions struct {
+			Addmethod                  string `json:"addMethod"`
+			IgnoreEpisodesWithFiles    bool   `json:"ignoreEpisodesWithFiles"`
+			IgnoreEpisodesWithoutFiles bool   `json:"ignoreEpisodesWithoutFiles"`
+			SearchForMovie             bool   `json:"searchForMovie"`
+			Monitor                    string `json:"monitor"`
+		} `json:"addOptions"`
+	}
+	payload := addMoviePayload{GetMovieResponse: movieData, AddOptions: struct {
+		Addmethod                  string `json:"addMethod"`
+		IgnoreEpisodesWithFiles    bool   `json:"ignoreEpisodesWithFiles"`
+		IgnoreEpisodesWithoutFiles bool   `json:"ignoreEpisodesWithoutFiles"`
+		SearchForMovie             bool   `json:"searchForMovie"`
+		Monitor                    string `json:"monitor"`
+	}{Addmethod: "manual", IgnoreEpisodesWithFiles: false, IgnoreEpisodesWithoutFiles: false, SearchForMovie: searchForMovie, Monitor: monitorProfile}}
+	payload.QualityProfileID = qualityProfileId
+	payload.Monitored = monitored
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	_, _, err = r.performReq(http.MethodPut, fmt.Sprintf("/movie/%d", movieData.ID), data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // getMovie response struct
-type GetMovieResponse []struct {
-	HasFile          bool   `json:"hasFile"`
-	QualityProfileId int    `json:"qualityProfileId"`
-	Monitored        bool   `json:"monitored"`
-	RootFolderPath   string `json:"rootFolderPath"`
-	ImdbId           string `json:"imdbId"`
-	TmdbId           int    `json:"tmdbId"`
-	MovieID          int    `json:"id"`
+type GetMovieResponse struct {
+	Title            string `json:"title"`
+	OriginalTitle    string `json:"originalTitle"`
+	OriginalLanguage struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"originalLanguage"`
+	AlternateTitles []struct {
+		SourceType      string `json:"sourceType"`
+		MovieMetadataID int    `json:"movieMetadataId"`
+		Title           string `json:"title"`
+		ID              int    `json:"id"`
+	} `json:"alternateTitles"`
+	SecondaryYearSourceID int       `json:"secondaryYearSourceId"`
+	SortTitle             string    `json:"sortTitle"`
+	SizeOnDisk            float32   `json:"sizeOnDisk"`
+	Status                string    `json:"status"`
+	Overview              string    `json:"overview"`
+	InCinemas             time.Time `json:"inCinemas"`
+	PhysicalRelease       time.Time `json:"physicalRelease"`
+	DigitalRelease        time.Time `json:"digitalRelease"`
+	Images                []struct {
+		CoverType string `json:"coverType"`
+		URL       string `json:"url"`
+		RemoteURL string `json:"remoteUrl"`
+	} `json:"images"`
+	Website             string        `json:"website"`
+	Year                int           `json:"year"`
+	YouTubeTrailerID    string        `json:"youTubeTrailerId"`
+	Studio              string        `json:"studio"`
+	Path                string        `json:"path"`
+	QualityProfileID    int           `json:"qualityProfileId"`
+	HasFile             bool          `json:"hasFile"`
+	MovieFileID         int           `json:"movieFileId"`
+	Monitored           bool          `json:"monitored"`
+	MinimumAvailability string        `json:"minimumAvailability"`
+	IsAvailable         bool          `json:"isAvailable"`
+	FolderName          string        `json:"folderName"`
+	Runtime             int           `json:"runtime"`
+	CleanTitle          string        `json:"cleanTitle"`
+	ImdbID              string        `json:"imdbId"`
+	TmdbID              int           `json:"tmdbId"`
+	TitleSlug           string        `json:"titleSlug"`
+	RootFolderPath      string        `json:"rootFolderPath"`
+	Certification       string        `json:"certification"`
+	Genres              []string      `json:"genres"`
+	Tags                []interface{} `json:"tags"`
+	Added               time.Time     `json:"added"`
+	Ratings             map[string]struct {
+		Votes int     `json:"votes"`
+		Value float32 `json:"value"`
+		Type  string  `json:"type"`
+	} `json:"ratings"`
+	MovieFile struct {
+		MovieID      int       `json:"movieId"`
+		RelativePath string    `json:"relativePath"`
+		Path         string    `json:"path"`
+		Size         int       `json:"size"`
+		DateAdded    time.Time `json:"dateAdded"`
+		Edition      string    `json:"edition"`
+		Languages    []struct {
+			ID   int    `json:"id"`
+			Name string `json:"name"`
+		} `json:"languages"`
+		Quality struct {
+			Quality struct {
+				ID         int    `json:"id"`
+				Name       string `json:"name"`
+				Source     string `json:"source"`
+				Resolution int    `json:"resolution"`
+				Modifier   string `json:"modifier"`
+			} `json:"quality"`
+			Revision struct {
+				Version  int  `json:"version"`
+				Real     int  `json:"real"`
+				IsRepack bool `json:"isRepack"`
+			} `json:"revision"`
+		} `json:"quality"`
+		CustomFormatScore int `json:"customFormatScore"`
+		IndexerFlags      int `json:"indexerFlags"`
+		MediaInfo         struct {
+			AudioBitrate          int     `json:"audioBitrate"`
+			AudioChannels         float32 `json:"audioChannels"`
+			AudioCodec            string  `json:"audioCodec"`
+			AudioLanguages        string  `json:"audioLanguages"`
+			AudioStreamCount      int     `json:"audioStreamCount"`
+			VideoBitDepth         int     `json:"videoBitDepth"`
+			VideoBitrate          int     `json:"videoBitrate"`
+			VideoCodec            string  `json:"videoCodec"`
+			VideoFps              float32 `json:"videoFps"`
+			VideoDynamicRange     string  `json:"videoDynamicRange"`
+			VideoDynamicRangeType string  `json:"videoDynamicRangeType"`
+			Resolution            string  `json:"resolution"`
+			RunTime               string  `json:"runTime"`
+			ScanType              string  `json:"scanType"`
+			Subtitles             string  `json:"subtitles"`
+		} `json:"mediaInfo"`
+		QualityCutoffNotMet bool `json:"qualityCutoffNotMet"`
+		ID                  int  `json:"id"`
+	} `json:"movieFile"`
+	Popularity float32 `json:"popularity"`
+	Statistics struct {
+		MovieFileCount int           `json:"movieFileCount"`
+		SizeOnDisk     float32       `json:"sizeOnDisk"`
+		ReleaseGroups  []interface{} `json:"releaseGroups"`
+	} `json:"statistics"`
+	ID         int `json:"id"`
+	Collection struct {
+		Title  string `json:"title"`
+		TmdbID int    `json:"tmdbId"`
+	} `json:"collection"`
 }
 
 // Fetch movie details in Radarr
-func (r *RadarrClient) GetMovie(tmdbId int) (GetMovieResponse, error) {
+func (r *RadarrClient) GetMovie(tmdbId int) ([]GetMovieResponse, error) {
 	var query string
 	if tmdbId == -1 {
 		query = "/movie"
@@ -206,7 +343,7 @@ func (r *RadarrClient) GetMovie(tmdbId int) (GetMovieResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	var gMR GetMovieResponse
+	var gMR []GetMovieResponse
 	err = util.ParseJson(body, &gMR)
 	if err != nil {
 		return nil, err
@@ -214,19 +351,56 @@ func (r *RadarrClient) GetMovie(tmdbId int) (GetMovieResponse, error) {
 	return gMR, nil
 }
 
+type GetQueueDetailsResponse struct {
+	TotalRecords int `json:"totalRecords"`
+	Records      []struct {
+		Status               string `json:"status"`
+		TrackedDownloadState string `json:"trackedDownloadStatus"`
+		ErrorMessage         string `json:"errorMessage"`
+	} `json:"records"`
+}
+
 // Fetch movie download status
-func (r *RadarrClient) GetQueueDetails(movieID int) (util.GetQueueDetailsResponse, error) {
-	_, body, err := r.performReq(http.MethodGet, fmt.Sprintf("/queue?id=%d", movieID), nil)
+func (r *RadarrClient) GetQueueDetails(movieID int) (string, error) {
+	_, body, err := r.performReq(http.MethodGet, fmt.Sprintf("/queue?movieId=%d", movieID), nil)
 	if err != nil {
-		return util.GetQueueDetailsResponse{}, err
+		return "", err
 	}
-	var gDSR util.GetQueueDetailsResponse
+	var gDSR []GetQueueDetailsResponse
 	err = util.ParseJson(body, &gDSR)
 	if err != nil {
-		return util.GetQueueDetailsResponse{}, err
+		return "", err
 	}
-	return gDSR, nil
+	if gDSR[0].TotalRecords == 0 {
+		return "Not Downloaded", nil
+	} else {
+		return "Downloading", nil
+	}
+}
 
+type GetCollectionResponse struct {
+	Title               string `json:"title"`
+	TmdbID              int    `json:"tmdbId"`
+	Monitored           bool   `json:"monitored"`
+	RootFolderPath      string `json:"rootFolderPath"`
+	QualityProfileID    int    `json:"qualityProfileId"`
+	SearchOnAdd         bool   `json:"searchOnAdd"`
+	MinimumAvailability string `json:"minimumAvailability"`
+	MissingMovies       int    `json:"missingMovies"`
+	ID                  int    `json:"id"`
+}
+
+func (r *RadarrClient) GetCollection(tmdbID int) (bool, error) {
+	_, body, err := r.performReq(http.MethodGet, fmt.Sprintf("/collection?tmdbId=%d", tmdbID), nil)
+	if err != nil {
+		return false, err
+	}
+	var gCR []GetCollectionResponse
+	err = util.ParseJson(body, &gCR)
+	if err != nil {
+		return false, err
+	}
+	return gCR[0].Monitored, nil
 }
 
 // Sets the default profiles and fetches the quality, rootpath profiles from radarr

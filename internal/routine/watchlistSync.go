@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/flxp49/notion-watchlistarr/internal/constant"
 	"github.com/flxp49/notion-watchlistarr/internal/notion"
 	"github.com/flxp49/notion-watchlistarr/internal/radarr"
 	"github.com/flxp49/notion-watchlistarr/internal/sonarr"
-	"github.com/flxp49/notion-watchlistarr/internal/util"
 )
 
 func RadarrWatchlistSync(Logger *slog.Logger, N *notion.NotionClient, R *radarr.RadarrClient, t time.Duration) {
@@ -25,7 +25,7 @@ start:
 	for _, movie := range movies {
 	m:
 		// query for each movie in watchlist
-		watchlistMovie, err := N.QueryDBImdb(movie.ImdbId)
+		watchlistMovie, err := N.QueryDBImdb(movie.ImdbID)
 		if err != nil {
 			Logger.Error("RadarrWatchlistSync", "Failed to query movie from notion watchlist", err)
 			time.Sleep(5 * time.Second)
@@ -35,31 +35,39 @@ start:
 		if len(watchlistMovie.Results) == 0 {
 			continue
 		}
+		monitoredProfile := constant.MovieOnly
+		if movie.Collection.TmdbID != 0 {
+			collectionMonitored, err := R.GetCollection(movie.Collection.TmdbID)
+			if err != nil {
+				Logger.Error("RadarrSync", "Failed to get collection details", err)
+				N.UpdateDownloadStatus(watchlistMovie.Results[0].Pgid, false, "Error", "", "", "")
+				continue
+			}
+			if collectionMonitored {
+				monitoredProfile = constant.MovieAndCollection
+			}
+		}
+		monitoredProfileNotionProp, _ := N.GetNotionMonitorProp(monitoredProfile, "Movie")
 		//get rootpath and qualityprofile properties for notion db
-		qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(movie.QualityProfileId, movie.RootFolderPath, "Movie")
+		qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(movie.QualityProfileID, movie.RootFolderPath, "Movie")
 		if err != nil {
 			Logger.Error("RadarrWatchlistSync", "Failed to fetch notion DB property", err)
 			goto m
 		}
 		if movie.HasFile {
-			err = N.UpdateDownloadStatus(watchlistMovie.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp)
+			err = N.UpdateDownloadStatus(watchlistMovie.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp, monitoredProfileNotionProp)
 			if err != nil {
 				Logger.Error("RadarrWatchlistSync", "Failed to update download status in watchlist", err)
 				goto m
 			}
 		} else {
 			//check for queue status
-			queueDetails, err := R.GetQueueDetails(movie.MovieID)
+			queueStatus, err := R.GetQueueDetails(movie.ID)
 			if err != nil {
 				Logger.Error("RadarrWatchlistSync", "Failed to fetch queue details from radarr", err)
 				goto m
 			}
-			downloadStatus, err := util.GetDownloadStatus(queueDetails)
-			if err != nil {
-				Logger.Error("RadarrWatchlistSync", "Failed to get download status", err)
-				goto m
-			}
-			err = N.UpdateDownloadStatus(watchlistMovie.Results[0].Pgid, false, downloadStatus, qualityProp, rootPathProp)
+			err = N.UpdateDownloadStatus(watchlistMovie.Results[0].Pgid, false, queueStatus, qualityProp, rootPathProp, monitoredProfileNotionProp)
 			if err != nil {
 				Logger.Error("RadarrWatchlistSync", "Failed to update notion watchlist", err)
 				goto m
@@ -87,7 +95,7 @@ start:
 	for _, serie := range series {
 	m:
 		// query for each series in watchlist
-		watchlistSeries, err := N.QueryDBImdb(serie.ImdbId)
+		watchlistSeries, err := N.QueryDBImdb(serie.ImdbID)
 		if err != nil {
 			Logger.Error("SonarrWatchlistSync", "Failed to query series title from notion watchlist", err)
 			time.Sleep(5 * time.Second)
@@ -98,30 +106,25 @@ start:
 			continue
 		}
 		//get rootpath and qualityprofile properties for notion db
-		qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(serie.QualityProfileId, serie.RootFolderPath, "TV Series")
+		qualityProp, rootPathProp, err := N.GetNotionQualityAndRootProps(serie.QualityProfileID, serie.RootFolderPath, "TV Series")
 		if err != nil {
 			Logger.Error("SonarrWatchlistSync", "Failed to fetch notion DB property", err)
 			goto m
 		}
 		if serie.Statistics.PercentOfEpisodes == 100 {
-			err = N.UpdateDownloadStatus(watchlistSeries.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp)
+			err = N.UpdateDownloadStatus(watchlistSeries.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp, "")
 			if err != nil {
 				Logger.Error("SonarrWatchlistSync", "Failed to update notion watchlist", err)
 				goto m
 			}
 		} else {
 			//check for queue status
-			queueDetails, err := S.GetQueueDetails(serie.SeriesID)
+			queueStatus, err := S.GetQueueDetails(serie.ID)
 			if err != nil {
 				Logger.Error("SonarrWatchlistSync", "Failed to fetch queue details from sonarr", err)
 				goto m
 			}
-			downloadStatus, err := util.GetDownloadStatus(queueDetails)
-			if err != nil {
-				Logger.Error("SonarrWatchlistSync", "Failed to get download status", err)
-				goto m
-			}
-			err = N.UpdateDownloadStatus(watchlistSeries.Results[0].Pgid, false, downloadStatus, qualityProp, rootPathProp)
+			err = N.UpdateDownloadStatus(watchlistSeries.Results[0].Pgid, false, queueStatus, qualityProp, rootPathProp, "")
 			if err != nil {
 				Logger.Error("SonarrWatchlistSync", "Failed to update notion watchlist", err)
 				goto m
