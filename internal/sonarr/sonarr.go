@@ -199,8 +199,26 @@ func (s *SonarrClient) AddSeries(seriesLookupData LookupSeriesResponse, qualityP
 	return nil
 }
 
+// Trigger Sonarr to search for the Series
+func (s *SonarrClient) SeriesSearchCommand(seriesID int) error {
+	type SearchSeriesPayload struct {
+		Name      string `json:"name"`
+		SeriesIds []int  `json:"seriesId"`
+	}
+	payload := SearchSeriesPayload{Name: "SeriesSearch", SeriesIds: []int{seriesID}}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	_, _, err = s.performReq(http.MethodPost, "/command", data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // getMovie response struct
-type GetSeriesResponse []struct {
+type GetSeriesResponse struct {
 	Title           string        `json:"title"`
 	AlternateTitles []interface{} `json:"alternateTitles"`
 	SortTitle       string        `json:"sortTitle"`
@@ -272,7 +290,7 @@ type GetSeriesResponse []struct {
 }
 
 // Fetch series details in Sonarr
-func (s *SonarrClient) GetSeries(tvdbId int) (GetSeriesResponse, error) {
+func (s *SonarrClient) GetSeries(tvdbId int) ([]GetSeriesResponse, error) {
 	var query string
 	if tvdbId == -1 {
 		query = "/series"
@@ -283,7 +301,7 @@ func (s *SonarrClient) GetSeries(tvdbId int) (GetSeriesResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	var gSR GetSeriesResponse
+	var gSR []GetSeriesResponse
 	err = util.ParseJson(body, &gSR)
 	if err != nil {
 		return nil, err
@@ -301,20 +319,20 @@ type GetQueueDetailsResponse struct {
 }
 
 // Fetch serie download status
-func (s *SonarrClient) GetQueueDetails(seriesId int) (string, error) {
+func (s *SonarrClient) GetQueueDetails(seriesId int) (bool, error) {
 	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/queue?seriesId=%d", seriesId), nil)
 	if err != nil {
-		return "", err
+		return false, err
 	}
-	var gDSR []GetQueueDetailsResponse
+	var gDSR GetQueueDetailsResponse
 	err = util.ParseJson(body, &gDSR)
 	if err != nil {
-		return "", err
+		return false, err
 	}
-	if gDSR[0].TotalRecords == 0 {
-		return "Not Downloaded", nil
+	if gDSR.TotalRecords == 0 {
+		return false, nil
 	} else {
-		return "Downloading", nil
+		return true, nil
 	}
 
 }

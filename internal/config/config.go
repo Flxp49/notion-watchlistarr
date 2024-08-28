@@ -20,7 +20,7 @@ type config struct {
 	SonarrDefaultMonitor        string `env:"SONARR_DEFAULT_MONITOR"`
 	NotionSecret                string `env:"NOTION_INTEGRATION_SECRET,notEmpty"`
 	NotionDBID                  string `env:"NOTION_DB_ID,notEmpty"`
-	ArrSyncinternvalSec         int    `env:"ARRSYNC_INTERVAL_SEC" envDefault:"10"`
+	PollInternvalSec         int    `env:"POLL_INTERVAL_SEC" envDefault:"10"`
 	WatchlistSyncIntervalHr     int    `env:"WATCHLIST_SYNC_INTERVAL_HOUR" envDefault:"12"`
 	LogDebug                    bool   `env:"LOG_DEBUG" envDefault:"false"`
 }

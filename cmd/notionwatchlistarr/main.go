@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/flxp49/notion-watchlistarr/internal/app"
 	"github.com/flxp49/notion-watchlistarr/internal/config"
 	"github.com/flxp49/notion-watchlistarr/internal/notion"
 	"github.com/flxp49/notion-watchlistarr/internal/radarr"
-	"github.com/flxp49/notion-watchlistarr/internal/routine"
 	"github.com/flxp49/notion-watchlistarr/internal/sonarr"
 	"github.com/flxp49/notion-watchlistarr/server"
 	"github.com/joho/godotenv"
@@ -59,7 +59,6 @@ Start:
 	if !waitForService(cfg.RadarrInit, cfg.RadarrHost, cfg.SonarrInit, cfg.SonarrHost) {
 		Logger.Error("Radarr / Sonarr services not available, Retrying...")
 		time.Sleep(time.Second * 30)
-		goto Start
 	}
 	if cfg.RadarrInit {
 		err = R.RadarrDefaults(cfg.RadarrDefaultRootPath, cfg.RadarrDefaultQualityProfile, cfg.RadarrDefaultMonitor, Rpid, Qpid)
@@ -84,14 +83,9 @@ Start:
 		goto Start
 	}
 	Logger.Info("Database updated with new properties")
-	if cfg.RadarrInit {
-		go routine.RadarrSync(Logger, N, R, time.Duration(cfg.ArrSyncinternvalSec))
-		go routine.RadarrWatchlistSync(Logger, N, R, time.Duration(cfg.WatchlistSyncIntervalHr))
-	}
-	if cfg.SonarrInit {
-		go routine.SonarrSync(Logger, N, S, time.Duration(cfg.ArrSyncinternvalSec))
-		go routine.SonarrWatchlistSync(Logger, N, S, time.Duration(cfg.WatchlistSyncIntervalHr))
-	}
+
+	app := app.NewApp(N, R, S, Logger, time.Duration(cfg.PollInternvalSec), time.Duration(cfg.WatchlistSyncIntervalHr), cfg.RadarrInit, cfg.SonarrInit)
+	app.RunApp()
 
 	Server := server.NewServer(cfg.Port, N, R, S, Logger, cfg.RadarrInit, cfg.SonarrInit)
 	err = Server.Start()

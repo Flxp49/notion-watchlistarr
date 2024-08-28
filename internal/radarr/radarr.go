@@ -187,7 +187,7 @@ func (r *RadarrClient) AddMovie(movieLookupData MovieLookupResponse, qualityProf
 //
 // monitor : "MovieOnly" | "MovieandCollection" | "None"
 func (r *RadarrClient) UpdateMovie(movieData GetMovieResponse, qualityProfileId int, monitored bool, searchForMovie bool, monitorProfile string) error {
-	type addMoviePayload struct {
+	type updateMoviePayload struct {
 		GetMovieResponse
 		AddOptions struct {
 			Addmethod                  string `json:"addMethod"`
@@ -197,7 +197,7 @@ func (r *RadarrClient) UpdateMovie(movieData GetMovieResponse, qualityProfileId 
 			Monitor                    string `json:"monitor"`
 		} `json:"addOptions"`
 	}
-	payload := addMoviePayload{GetMovieResponse: movieData, AddOptions: struct {
+	payload := updateMoviePayload{GetMovieResponse: movieData, AddOptions: struct {
 		Addmethod                  string `json:"addMethod"`
 		IgnoreEpisodesWithFiles    bool   `json:"ignoreEpisodesWithFiles"`
 		IgnoreEpisodesWithoutFiles bool   `json:"ignoreEpisodesWithoutFiles"`
@@ -211,6 +211,24 @@ func (r *RadarrClient) UpdateMovie(movieData GetMovieResponse, qualityProfileId 
 		return err
 	}
 	_, _, err = r.performReq(http.MethodPut, fmt.Sprintf("/movie/%d", movieData.ID), data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Trigger Radarr to search for the movie
+func (r *RadarrClient) MovieSearchCommand(movieID int) error {
+	type SearchMoviePayload struct {
+		Name     string `json:"name"`
+		MovieIds []int  `json:"movieIds"`
+	}
+	payload := SearchMoviePayload{Name: "MoviesSearch", MovieIds: []int{movieID}}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	_, _, err = r.performReq(http.MethodPost, "/command", data)
 	if err != nil {
 		return err
 	}
@@ -361,20 +379,20 @@ type GetQueueDetailsResponse struct {
 }
 
 // Fetch movie download status
-func (r *RadarrClient) GetQueueDetails(movieID int) (string, error) {
+func (r *RadarrClient) GetQueueDetails(movieID int) (bool, error) {
 	_, body, err := r.performReq(http.MethodGet, fmt.Sprintf("/queue?movieId=%d", movieID), nil)
 	if err != nil {
-		return "", err
+		return false, err
 	}
-	var gDSR []GetQueueDetailsResponse
+	var gDSR GetQueueDetailsResponse
 	err = util.ParseJson(body, &gDSR)
 	if err != nil {
-		return "", err
+		return false, err
 	}
-	if gDSR[0].TotalRecords == 0 {
-		return "Not Downloaded", nil
+	if gDSR.TotalRecords == 0 {
+		return false, nil
 	} else {
-		return "Downloading", nil
+		return true, nil
 	}
 }
 
