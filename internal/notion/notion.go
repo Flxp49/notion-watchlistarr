@@ -87,7 +87,9 @@ var sMap = map[string]statusMap{
 // download - true || false for checkbox property
 //
 // status - "Queued" , "Downloading" , "Downloaded" or "Error"
-func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status string, qualityProfile string, rootPath string) error {
+//
+// mediaType - "movie" || "series"
+func (n *NotionClient) UpdateDownloadStatus(mediaType string, id string, download bool, status string, qualityProfile string, rootPath string, monitorProfile string) error {
 	type updateDownloadStatus struct {
 		Properties struct {
 			Download struct {
@@ -109,12 +111,24 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 					Name string `json:"name"`
 				} `json:"select"`
 			} `json:"Root Folder"`
+			MonitorProfile *struct {
+				Select *struct {
+					Name string `json:"name"`
+				} `json:"select"`
+			} `json:"Monitor,omitempty"`
 		} `json:"properties"`
 	}
 	payload := updateDownloadStatus{}
 	payload.Properties.DStatus.Select.Name = sMap[status].name
 	payload.Properties.Download.Checkbox = download
-	if status != "Error" && status != "Not Downloaded" {
+
+	if status == "Error" || status == "Not Downloaded" {
+		payload.Properties.MonitorProfile = &struct {
+			Select *struct {
+				Name string `json:"name"`
+			} `json:"select"`
+		}{}
+	} else {
 		payload.Properties.QualityProfile = struct {
 			Select *struct {
 				Name string `json:"name"`
@@ -122,7 +136,6 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 		}{Select: &struct {
 			Name string `json:"name"`
 		}{Name: qualityProfile}}
-
 		payload.Properties.RootFolder = struct {
 			Select *struct {
 				Name string `json:"name"`
@@ -130,6 +143,15 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 		}{Select: &struct {
 			Name string `json:"name"`
 		}{Name: rootPath}}
+		if mediaType == "movie" {
+			payload.Properties.MonitorProfile = &struct {
+				Select *struct {
+					Name string `json:"name"`
+				} `json:"select"`
+			}{Select: &struct {
+				Name string `json:"name"`
+			}{Name: monitorProfile}}
+		}
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -144,31 +166,32 @@ func (n *NotionClient) UpdateDownloadStatus(id string, download bool, status str
 
 // QueryDB Response struct
 type QueryDBResponse struct {
-	Results []struct {
-		Pgid       string `json:"id"`
-		Properties struct {
-			Imdbid struct {
-				Rich_text []struct {
-					Plain_text string `json:"plain_text"`
-				} `json:"rich_text"`
-			} `json:"IMDb ID"`
-			QualityProfile struct {
-				Select struct {
-					Name string `json:"name"`
-				} `json:"select"`
-			} `json:"Quality Profile"`
-			RootFolder struct {
-				Select struct {
-					Name string `json:"name"`
-				} `json:"select"`
-			} `json:"Root Folder"`
-			MonitorProfile struct {
-				Select struct {
-					Name string `json:"name"`
-				} `json:"select"`
-			} `json:"Monitor"`
-		} `json:"properties"`
-	} `json:"results"`
+	Results []Result `json:"results"`
+}
+type Result struct {
+	Pgid       string `json:"id"`
+	Properties struct {
+		Imdbid struct {
+			Rich_text []struct {
+				Plain_text string `json:"plain_text"`
+			} `json:"rich_text"`
+		} `json:"IMDb ID"`
+		QualityProfile struct {
+			Select struct {
+				Name string `json:"name"`
+			} `json:"select"`
+		} `json:"Quality Profile"`
+		RootFolder struct {
+			Select struct {
+				Name string `json:"name"`
+			} `json:"select"`
+		} `json:"Root Folder"`
+		MonitorProfile struct {
+			Select struct {
+				Name string `json:"name"`
+			} `json:"select"`
+		} `json:"Monitor"`
+	} `json:"properties"`
 }
 
 // Query DB for titles to Download where download is checked
@@ -256,12 +279,12 @@ func (n *NotionClient) QueryDBTmdb(tmdbId int) (QueryDBIdResponse, error) {
 		Page_size int `json:"page_size"`
 	}
 	payload := queryDBTmdbPayload{Filter: struct {
-		Property string "json:\"property\""
+		Property string `json:"property"`
 		Number   struct {
-			Equals int "json:\"equals\""
-		} "json:\"number\""
+			Equals int `json:"equals"`
+		} `json:"number"`
 	}{Number: struct {
-		Equals int "json:\"equals\""
+		Equals int `json:"equals"`
 	}{Equals: tmdbId}}, Page_size: 5}
 	data, _ := json.Marshal(payload)
 	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)

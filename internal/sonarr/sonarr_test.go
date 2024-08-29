@@ -96,3 +96,10 @@ func TestGetSeriesByRemoteID(t *testing.T) {
 	}
 	t.Log(id)
 }
+
+func TestSeriesSearchCommand(t *testing.T) {
+	err := Sonarr.SeriesSearchCommand(95)
+	if err != nil {
+		t.Fatal(err)
+	}
+}

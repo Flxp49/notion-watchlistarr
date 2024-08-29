@@ -199,21 +199,98 @@ func (s *SonarrClient) AddSeries(seriesLookupData LookupSeriesResponse, qualityP
 	return nil
 }
 
+// Trigger Sonarr to search for the Series
+func (s *SonarrClient) SeriesSearchCommand(seriesID int) error {
+	type SearchSeriesPayload struct {
+		Name     string `json:"name"`
+		SeriesId int    `json:"seriesId"`
+	}
+	payload := SearchSeriesPayload{Name: "SeriesSearch", SeriesId: seriesID}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	_, _, err = s.performReq(http.MethodPost, "/command", data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // getMovie response struct
-type GetSeriesResponse []struct {
-	ImdbId           string `json:"imdbId"`
-	SeriesID         int    `json:"id"`
-	QualityProfileId int    `json:"qualityProfileId"`
-	Monitored        bool   `json:"monitored"`
-	Path             string `json:"path"`
-	RootFolderPath   string `json:"rootFolderPath"`
-	Statistics       struct {
-		PercentOfEpisodes float32 `json:"percentOfEpisodes"`
+type GetSeriesResponse struct {
+	Title           string        `json:"title"`
+	AlternateTitles []interface{} `json:"alternateTitles"`
+	SortTitle       string        `json:"sortTitle"`
+	Status          string        `json:"status"`
+	Ended           bool          `json:"ended"`
+	Overview        string        `json:"overview"`
+	PreviousAiring  time.Time     `json:"previousAiring"`
+	Network         string        `json:"network"`
+	AirTime         string        `json:"airTime"`
+	Images          []struct {
+		CoverType string `json:"coverType"`
+		URL       string `json:"url"`
+		RemoteURL string `json:"remoteUrl"`
+	} `json:"images"`
+	OriginalLanguage struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	} `json:"originalLanguage"`
+	Seasons []struct {
+		SeasonNumber int  `json:"seasonNumber"`
+		Monitored    bool `json:"monitored"`
+		Statistics   struct {
+			EpisodeFileCount  int           `json:"episodeFileCount"`
+			EpisodeCount      int           `json:"episodeCount"`
+			TotalEpisodeCount int           `json:"totalEpisodeCount"`
+			SizeOnDisk        float32       `json:"sizeOnDisk"`
+			ReleaseGroups     []interface{} `json:"releaseGroups"`
+			PercentOfEpisodes float32       `json:"percentOfEpisodes"`
+		} `json:"statistics"`
+	} `json:"seasons"`
+	Year              int           `json:"year"`
+	Path              string        `json:"path"`
+	QualityProfileID  int           `json:"qualityProfileId"`
+	SeasonFolder      bool          `json:"seasonFolder"`
+	Monitored         bool          `json:"monitored"`
+	MonitorNewItems   string        `json:"monitorNewItems"`
+	UseSceneNumbering bool          `json:"useSceneNumbering"`
+	Runtime           int           `json:"runtime"`
+	TvdbID            int           `json:"tvdbId"`
+	TvRageID          int           `json:"tvRageId"`
+	TvMazeID          int           `json:"tvMazeId"`
+	TmdbID            int           `json:"tmdbId"`
+	FirstAired        time.Time     `json:"firstAired"`
+	LastAired         time.Time     `json:"lastAired"`
+	SeriesType        string        `json:"seriesType"`
+	CleanTitle        string        `json:"cleanTitle"`
+	ImdbID            string        `json:"imdbId"`
+	TitleSlug         string        `json:"titleSlug"`
+	RootFolderPath    string        `json:"rootFolderPath"`
+	Certification     string        `json:"certification"`
+	Genres            []string      `json:"genres"`
+	Tags              []interface{} `json:"tags"`
+	Added             time.Time     `json:"added"`
+	Ratings           struct {
+		Votes int     `json:"votes"`
+		Value float32 `json:"value"`
+	} `json:"ratings"`
+	Statistics struct {
+		SeasonCount       int      `json:"seasonCount"`
+		EpisodeFileCount  int      `json:"episodeFileCount"`
+		EpisodeCount      int      `json:"episodeCount"`
+		TotalEpisodeCount int      `json:"totalEpisodeCount"`
+		SizeOnDisk        float32  `json:"sizeOnDisk"`
+		ReleaseGroups     []string `json:"releaseGroups"`
+		PercentOfEpisodes float32  `json:"percentOfEpisodes"`
 	} `json:"statistics"`
+	LanguageProfileID int `json:"languageProfileId"`
+	ID                int `json:"id"`
 }
 
 // Fetch series details in Sonarr
-func (s *SonarrClient) GetSeries(tvdbId int) (GetSeriesResponse, error) {
+func (s *SonarrClient) GetSeries(tvdbId int) ([]GetSeriesResponse, error) {
 	var query string
 	if tvdbId == -1 {
 		query = "/series"
@@ -224,7 +301,7 @@ func (s *SonarrClient) GetSeries(tvdbId int) (GetSeriesResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	var gSR GetSeriesResponse
+	var gSR []GetSeriesResponse
 	err = util.ParseJson(body, &gSR)
 	if err != nil {
 		return nil, err
@@ -232,18 +309,31 @@ func (s *SonarrClient) GetSeries(tvdbId int) (GetSeriesResponse, error) {
 	return gSR, nil
 }
 
-// Fetch movie download status
-func (s *SonarrClient) GetQueueDetails(seriesId int) (util.GetQueueDetailsResponse, error) {
-	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/queue?id=%d", seriesId), nil)
+type GetQueueDetailsResponse struct {
+	TotalRecords int `json:"totalRecords"`
+	Records      []struct {
+		Status               string `json:"status"`
+		TrackedDownloadState string `json:"trackedDownloadStatus"`
+		ErrorMessage         string `json:"errorMessage"`
+	} `json:"records"`
+}
+
+// Fetch serie download status
+func (s *SonarrClient) GetQueueDetails(seriesId int) (bool, error) {
+	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/queue?seriesId=%d", seriesId), nil)
 	if err != nil {
-		return util.GetQueueDetailsResponse{}, err
+		return false, err
 	}
-	var gDSR util.GetQueueDetailsResponse
+	var gDSR GetQueueDetailsResponse
 	err = util.ParseJson(body, &gDSR)
 	if err != nil {
-		return util.GetQueueDetailsResponse{}, err
+		return false, err
 	}
-	return gDSR, nil
+	if gDSR.TotalRecords == 0 {
+		return false, nil
+	} else {
+		return true, nil
+	}
 
 }
 

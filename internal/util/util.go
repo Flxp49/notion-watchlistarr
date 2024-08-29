@@ -45,30 +45,6 @@ func ParseJson(body []byte, target interface{}) error {
 	return json.Unmarshal(body, target)
 }
 
-type GetQueueDetailsResponse struct {
-	TotalRecords int `json:"totalRecords"`
-	Records      []struct {
-		Status               string `json:"status"`
-		TrackedDownloadState string `json:"trackedDownloadStatus"`
-		ErrorMessage         string `json:"errorMessage"`
-	} `json:"records"`
-}
-
-// this takes the GetQueueDetailsResponse and returns the suitable status: "Not Downloaded" | "Error" | "Downloading"
-func GetDownloadStatus(download GetQueueDetailsResponse) (string, error) {
-	if download.TotalRecords == 0 {
-		return "Not Downloaded", nil
-	} else {
-		// check if error message present, if present: return error as status
-		// else return downloading
-		if download.Records[0].ErrorMessage != "" {
-			return "Error", nil
-		} else {
-			return "Downloading", nil
-		}
-	}
-}
-
 func CheckSamePath(p1 string, p2 string) bool {
 	f1 := strings.ReplaceAll(p1, "/", "")
 	f1 = strings.ReplaceAll(f1, "\\", "")

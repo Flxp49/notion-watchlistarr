@@ -19,6 +19,7 @@ Download media (via Radarr & Sonarr) directly from watchlist on Notion.
     - `On Import`
     - `On Movie Added`
     - `On Movie Delete`
+    - `On Movie File Delete`
   - Set Webhook URL as `http://localhost:PORT/radarr` where `PORT` is whatever is set by the user.
   - Set Method as `POST`
   - Click Save
@@ -47,9 +48,9 @@ The executable requires a .env file in the same directory from which it reads th
 | Env | Value | Default |
 | -------- | -------- | -------- | 
 | `PORT` | Port No to listen on | `7879` |
-| `RADARR_INIT` | Enable Radarr Sync: `0` - Disable `1` - Enable | `1` |
-| `SONARR_INIT` | Enable Sonarr Sync: `0` - Disable `1` - Enable | `1` |
-| `LOG_LEVEL` | `0` - DEBUG `1` - ERROR | `1` |
+| `RADARR_INIT` | Enable Radarr Sync: `false` - Disable `true` - Enable | `true` |
+| `SONARR_INIT` | Enable Sonarr Sync: `false` - Disable `true` - Enable | `true` |
+| `LOG_DEBUG` | `false` or `true` | `false` |
 | `NOTION_INTEGRATION_SECRET` | Notion Integration Secret | NA |
 | `NOTION_DB_ID` | Database id (found in the URL of the database page) | NA |
 | `RADARR_HOST` | Radarr Host. Ex: `http://localhost:7878` | NA |
@@ -62,7 +63,7 @@ The executable requires a .env file in the same directory from which it reads th
 | `SONARR_DEFAULT_ROOT_PATH` | Ex: `D:/Media/Shows` | If not provided, will set the first root path fetched from Sonarr as default |
 | `SONARR_DEFAULT_MONITOR` | TV monitor profile, possible values: `AllEpisodes` `FutureEpisodes` `MissingEpisodes` `ExistingEpisodes` `RecentEpisodes` `PilotEpisode` `FirstSeason` `LastSeason` `MonitorSpecials` `UnmonitorSpecials` `None` | `AllEpisodes` |
 | `SONARR_DEFAULT_QUALITY_PROFILE` | Ex: `HD-1080p` | If not provided, will set the first profile fetched from Sonarr as default |
-| `ARRSYNC_INTERVAL_SEC` | Duration (**Seconds**) Interval between each query to database for downloading | 10 |
+| `POLL_INTERVAL_SEC` | Duration (**Seconds**) Interval between each query to database for downloading | 10 |
 | `WATCHLIST_SYNC_INTERVAL_HOUR` | Duration (**Hours**) Interval to sync media in Radarr and Sonarr library with watchlist | 12 |
 
 ## Docker
@@ -100,7 +101,6 @@ The app on launch adds the following properties with values to the Notion databa
   `TV Series: Last Season`  
   `TV Series: Monitor Specials`  
   `TV Series: Unmonitor Specials`  
-  `TV Series: None`  
   `Movie: Movie Only`  
   `Movie: Collection`
 
@@ -119,8 +119,8 @@ When Downloaded, the Download Status is updated with the respective info:
 >The app uses webhooks to sync the status of the media.
 
 ## Sync
-The app runs 2 routines to sync the downloads:  
-1. Queries the watchlist every `ARRSYNC_INTERVAL_SEC` for downloading media via Radarr/Sonarr
+The app runs 2 routines:  
+1. Queries the watchlist every `POLL_INTERVAL_SEC` for downloading media via Radarr/Sonarr
 2. Syncs the existing media in Radarr/Sonarr library with the watchlist every `WATCHLIST_SYNC_INTERVAL_HOUR` and updates the Download Status accordingly
 
 ## Logging
@@ -128,8 +128,8 @@ The app runs 2 routines to sync the downloads:
 - Docker: Logs output to container logs
 
 # Limitations
-- Update feature: if a movie/series already exists in the library - updating the library with different monitor profile isnt supported yet
-- `Monitor` profile does not show up via the API hence it will remain empty in the Notion database (unless set by the user before downloading)
+- Update feature: if a movie/series already exists in the library - updating it is not supported
+- `Monitor` info on watchlist sync shows up for movies but not series (unless set by the user before downloading)
 
 # Developer
 ```
