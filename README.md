@@ -101,7 +101,6 @@ The app on launch adds the following properties with values to the Notion databa
   `TV Series: Last Season`  
   `TV Series: Monitor Specials`  
   `TV Series: Unmonitor Specials`  
-  `TV Series: None`  
   `Movie: Movie Only`  
   `Movie: Collection`
 
