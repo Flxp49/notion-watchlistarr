@@ -39,18 +39,11 @@ func (s *Server) radarrHandler(w http.ResponseWriter, r *http.Request) {
 	if len(page.Results) == 0 {
 		return
 	}
-
-	if movieData.EventType == "MovieDelete" {
-		if !movieData.DeletedFiles {
-			return
-		}
-		err = s.N.UpdateDownloadStatus("movie", page.Results[0].Pgid, false, "Not Downloaded", "", "", "")
-		if err != nil {
-			s.Logger.Error("RadarrWebhook", "Failed to update download status in watchlist", err)
-		}
+	if movieData.EventType == "Test" {
 		return
 	}
-	if movieData.EventType == "Test" {
+	if movieData.EventType == "MovieDelete" || movieData.EventType == "MovieFileDelete" {
+		s.N.UpdateDownloadStatus("movie", page.Results[0].Pgid, false, "Not Downloaded", "", "", "")
 		return
 	}
 
@@ -133,17 +126,11 @@ func (s *Server) sonarrHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if seriesData.EventType == "SeriesDelete" {
-		if !seriesData.DeletedFiles {
-			return
-		}
-		err = s.N.UpdateDownloadStatus("series", page.Results[0].Pgid, false, "Not Downloaded", "", "", "")
-		if err != nil {
-			s.Logger.Error("SonarrWebhook", "Failed to update download status in watchlist", err)
-		}
+	if seriesData.EventType == "Test" {
 		return
 	}
-	if seriesData.EventType == "Test" {
+	if seriesData.EventType == "SeriesDelete" {
+		s.N.UpdateDownloadStatus("series", page.Results[0].Pgid, false, "Not Downloaded", "", "", "")
 		return
 	}
 
