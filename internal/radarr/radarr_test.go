@@ -95,3 +95,10 @@ func TestGetQualityProfiles(t *testing.T) {
 	}
 	t.Log(qualityProfiles)
 }
+
+func TestMovieSearchCommand(t *testing.T) {
+	err := Radarr.MovieSearchCommand(34)
+	if err != nil {
+		t.Fatal(err)
+	}
+}

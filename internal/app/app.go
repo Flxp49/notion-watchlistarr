@@ -67,6 +67,7 @@ func (A *App) RadarrPollDB() {
 					A.RadarrMedia.N.UpdateDownloadStatus("movie", notionPage.Pgid, false, "Error", "", "", "")
 					continue
 				}
+				continue
 			}
 			err = A.RadarrMedia.AddTitle(LookupData, notionPage)
 			if err != nil {
@@ -101,6 +102,7 @@ func (A *App) SonarrPollDB() {
 					A.SonarrMedia.N.UpdateDownloadStatus("series", notionPage.Pgid, false, "Error", "", "", "")
 					continue
 				}
+				continue
 			}
 			err = A.SonarrMedia.AddTitle(LookupData, notionPage)
 			if err != nil {

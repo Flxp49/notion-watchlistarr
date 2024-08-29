@@ -202,10 +202,10 @@ func (s *SonarrClient) AddSeries(seriesLookupData LookupSeriesResponse, qualityP
 // Trigger Sonarr to search for the Series
 func (s *SonarrClient) SeriesSearchCommand(seriesID int) error {
 	type SearchSeriesPayload struct {
-		Name      string `json:"name"`
-		SeriesIds []int  `json:"seriesId"`
+		Name     string `json:"name"`
+		SeriesId int    `json:"seriesId"`
 	}
-	payload := SearchSeriesPayload{Name: "SeriesSearch", SeriesIds: []int{seriesID}}
+	payload := SearchSeriesPayload{Name: "SeriesSearch", SeriesId: seriesID}
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
