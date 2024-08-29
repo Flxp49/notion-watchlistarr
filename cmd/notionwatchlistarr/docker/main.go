@@ -31,6 +31,8 @@ func main() {
 
 	if cfg.LogDebug {
 		programLevel.Set(slog.LevelDebug)
+	} else {
+		programLevel.Set(slog.LevelError)
 	}
 
 	if !(cfg.RadarrInit || cfg.SonarrInit) {
