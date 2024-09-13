@@ -171,6 +171,9 @@ type QueryDBResponse struct {
 type Result struct {
 	Pgid       string `json:"id"`
 	Properties struct {
+		Download struct {
+			Checkbox bool `json:"checkbox"`
+		}
 		Imdbid struct {
 			Rich_text []struct {
 				Plain_text string `json:"plain_text"`

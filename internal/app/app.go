@@ -54,6 +54,10 @@ func (A *App) RadarrPollDB() {
 		}
 		A.Logger.Info("RadarrPollDB", "Status", "Fetched titles from DB", "No of titles fetched", len(notionPages.Results))
 		for _, notionPage := range notionPages.Results {
+			if !notionPage.Properties.Download.Checkbox {
+				A.Logger.Warn("RadarrPollDB", "Notion filter fail, fetched", notionPage.Properties)
+				continue
+			}
 			LookupData, LibraryData, err := A.RadarrMedia.ProcessTitles(notionPage)
 			if err != nil {
 				A.Logger.Error("RadarrPollDB", "Failed to process movie in Radarr", notionPage.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
@@ -89,6 +93,10 @@ func (A *App) SonarrPollDB() {
 		}
 		A.Logger.Info("SonarrPollDB", "Status", "Fetched titles from DB", "No of titles fetched", len(notionPages.Results))
 		for _, notionPage := range notionPages.Results {
+			if !notionPage.Properties.Download.Checkbox {
+				A.Logger.Warn("SonarrPollDB", "Notion filter fail, fetched", notionPage.Properties)
+				continue
+			}
 			LookupData, LibraryData, err := A.SonarrMedia.ProcessTitles(notionPage)
 			if err != nil {
 				A.Logger.Error("SonarrPollDB", "Failed to process movie in Sonarr", notionPage.Properties.Imdbid.Rich_text[0].Plain_text, "Error", err)
