@@ -64,7 +64,7 @@ The executable requires a .env file in the same directory from which it reads th
 | `SONARR_DEFAULT_MONITOR` | TV monitor profile, possible values: `AllEpisodes` `FutureEpisodes` `MissingEpisodes` `ExistingEpisodes` `RecentEpisodes` `PilotEpisode` `FirstSeason` `LastSeason` `MonitorSpecials` `UnmonitorSpecials` `None` | `AllEpisodes` |
 | `SONARR_DEFAULT_QUALITY_PROFILE` | Ex: `HD-1080p` | If not provided, will set the first profile fetched from Sonarr as default |
 | `POLL_INTERVAL_SEC` | Duration (**Seconds**) Interval between each query to database for downloading | 10 |
-| `WATCHLIST_SYNC_INTERVAL_HOUR` | Duration (**Hours**) Interval to sync media in Radarr and Sonarr library with watchlist | 12 |
+| `WATCHLIST_SYNC_INTERVAL_HOUR` | Duration (**Hours**) Interval to sync media in Radarr and Sonarr library with watchlist | 24 |
 
 ## Docker
 ```

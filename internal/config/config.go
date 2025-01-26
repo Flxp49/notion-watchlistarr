@@ -21,7 +21,7 @@ type config struct {
 	NotionSecret                string `env:"NOTION_INTEGRATION_SECRET,notEmpty"`
 	NotionDBID                  string `env:"NOTION_DB_ID,notEmpty"`
 	PollInternvalSec            int    `env:"POLL_INTERVAL_SEC" envDefault:"10"`
-	WatchlistSyncIntervalHr     int    `env:"WATCHLIST_SYNC_INTERVAL_HOUR" envDefault:"12"`
+	WatchlistSyncIntervalHr     int    `env:"WATCHLIST_SYNC_INTERVAL_HOUR" envDefault:"24"`
 	LogDebug                    bool   `env:"LOG_DEBUG" envDefault:"false"`
 }
 
