@@ -88,7 +88,7 @@ var sMap = map[string]statusMap{
 //
 // status - "Queued" , "Downloading" , "Downloaded" or "Error"
 //
-// mediaType - "movie" || "series"
+// mediaType - "Movie" || "TV Series"
 func (n *NotionClient) UpdateDownloadStatus(mediaType string, id string, download bool, status string, qualityProfile string, rootPath string, monitorProfile string) error {
 	type updateDownloadStatus struct {
 		Properties struct {
@@ -122,7 +122,7 @@ func (n *NotionClient) UpdateDownloadStatus(mediaType string, id string, downloa
 	payload.Properties.DStatus.Select.Name = sMap[status].name
 	payload.Properties.Download.Checkbox = download
 
-	if status == "Error" || status == "Not Downloaded" {
+	if status == constant.MediaStatusError || status == constant.MediaStatusNotDownloaded {
 		payload.Properties.MonitorProfile = &struct {
 			Select *struct {
 				Name string `json:"name"`
@@ -143,7 +143,7 @@ func (n *NotionClient) UpdateDownloadStatus(mediaType string, id string, downloa
 		}{Select: &struct {
 			Name string `json:"name"`
 		}{Name: rootPath}}
-		if mediaType == "movie" {
+		if mediaType == constant.MediaTypeMovie {
 			payload.Properties.MonitorProfile = &struct {
 				Select *struct {
 					Name string `json:"name"`
@@ -157,7 +157,7 @@ func (n *NotionClient) UpdateDownloadStatus(mediaType string, id string, downloa
 	if err != nil {
 		return err
 	}
-	_, _, err = n.performNotionReq("PATCH", fmt.Sprintf("v1/pages/%s", id), data)
+	_, _, err = n.performNotionReq(http.MethodPatch, fmt.Sprintf("v1/pages/%s", id), data)
 	if err != nil {
 		return err
 	}
@@ -239,7 +239,7 @@ func (n *NotionClient) QueryDB(mtype string) (QueryDBResponse, error) {
 	}{Equals: mtype}}}}, Page_size: 5}
 
 	data, _ := json.Marshal(payload)
-	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
+	_, body, err := n.performNotionReq(http.MethodPost, fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
 		return QueryDBResponse{}, err
 	}
@@ -290,7 +290,7 @@ func (n *NotionClient) QueryDBTmdb(tmdbId int) (QueryDBIdResponse, error) {
 		Equals int `json:"equals"`
 	}{Equals: tmdbId}}, Page_size: 5}
 	data, _ := json.Marshal(payload)
-	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
+	_, body, err := n.performNotionReq(http.MethodPost, fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
 		return QueryDBIdResponse{}, err
 	}
@@ -324,7 +324,7 @@ func (n *NotionClient) QueryDBImdb(imdbId string) (QueryDBIdResponse, error) {
 		Equals string `json:"equals"`
 	}{Equals: imdbId}}, Page_size: 5}
 	data, _ := json.Marshal(payload)
-	_, body, err := n.performNotionReq("POST", fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
+	_, body, err := n.performNotionReq(http.MethodPost, fmt.Sprintf("v1/databases/%s/query", n.dbid), data)
 	if err != nil {
 		return QueryDBIdResponse{}, err
 	}
@@ -411,7 +411,7 @@ func (n *NotionClient) AddDBProperties(qpid map[string]int, rpid map[string]stri
 	payload.Properties.Download.Type = "checkbox"
 	payload.Properties.DownloadStatus.Type = "select"
 	data, _ := json.Marshal(payload)
-	_, _, err := n.performNotionReq("PATCH", fmt.Sprintf("v1/databases/%s/", n.dbid), data)
+	_, _, err := n.performNotionReq(http.MethodPatch, fmt.Sprintf("v1/databases/%s/", n.dbid), data)
 	if err != nil {
 		return err
 	}

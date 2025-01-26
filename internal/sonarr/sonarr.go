@@ -150,7 +150,7 @@ type LookupSeriesResponse struct {
 //
 // idType : "imdb" || "tvdb"
 func (s *SonarrClient) LookupSeries(idType string, id string) (LookupSeriesResponse, error) {
-	if !(idType == "imdb" || idType == "tvdb") {
+	if !(idType == constant.IMDB || idType == constant.TVDB) {
 		return LookupSeriesResponse{}, errors.New(`idType to be either "imdb" || "tvdb"`)
 	}
 	_, body, err := s.performReq(http.MethodGet, fmt.Sprintf("/series/lookup?term=%s:%s", idType, id), nil)

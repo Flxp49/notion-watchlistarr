@@ -18,7 +18,7 @@ func NewRadarrMedia(N *notion.NotionClient, R *radarr.RadarrClient) *RadarrMedia
 }
 
 func (radarrMedia RadarrMedia) PollTitles() (notion.QueryDBResponse, error) {
-	results, err := radarrMedia.N.QueryDB("Movie")
+	results, err := radarrMedia.N.QueryDB(constant.MediaTypeMovie)
 	if err != nil {
 		return notion.QueryDBResponse{}, err
 	}
@@ -57,14 +57,14 @@ func (radarrMedia RadarrMedia) ProcessTitles(notionPage notion.Result) (radarr.M
 func (radarrMedia RadarrMedia) AddTitle(LookupData radarr.MovieLookupResponse, notionPage notion.Result) error {
 	// set monitor property
 	if notionPage.Properties.MonitorProfile.Select.Name == "" {
-		monitorProfile, err := radarrMedia.N.GetNotionMonitorProp(radarrMedia.R.DefaultMonitorProfile, "Movie")
+		monitorProfile, err := radarrMedia.N.GetNotionMonitorProp(radarrMedia.R.DefaultMonitorProfile, constant.MediaTypeMovie)
 		if err != nil {
 			return errors.Join(errors.New("failed to get monitor profile notion property"), err)
 		}
 		notionPage.Properties.MonitorProfile.Select.Name = monitorProfile
 	}
 	//get rootpath and qualityprofile properties for notion db
-	qualityProp, rootPathProp, err := radarrMedia.N.GetNotionQualityAndRootProps(radarrMedia.R.DefaultQualityProfile, radarrMedia.R.DefaultRootPath, "Movie")
+	qualityProp, rootPathProp, err := radarrMedia.N.GetNotionQualityAndRootProps(radarrMedia.R.DefaultQualityProfile, radarrMedia.R.DefaultRootPath, constant.MediaTypeMovie)
 	if err != nil {
 		return errors.Join(errors.New("failed to get quality and root path profile notion property"), err)
 	}
@@ -85,7 +85,7 @@ func (radarrMedia RadarrMedia) AddTitle(LookupData radarr.MovieLookupResponse, n
 
 func (radarrMedia RadarrMedia) HandleExistingTitle(LibraryData []radarr.GetMovieResponse, notionPage notion.Result) error {
 	//get rootpath and qualityprofile properties for notion db
-	qualityProp, rootPathProp, err := radarrMedia.N.GetNotionQualityAndRootProps(LibraryData[0].QualityProfileID, LibraryData[0].RootFolderPath, "Movie")
+	qualityProp, rootPathProp, err := radarrMedia.N.GetNotionQualityAndRootProps(LibraryData[0].QualityProfileID, LibraryData[0].RootFolderPath, constant.MediaTypeMovie)
 	if err != nil {
 		return err
 	}
@@ -93,9 +93,9 @@ func (radarrMedia RadarrMedia) HandleExistingTitle(LibraryData []radarr.GetMovie
 	if err != nil {
 		return err
 	}
-	monitoredProfileNotionProp, _ := radarrMedia.N.GetNotionMonitorProp(monitoredProfile, "Movie")
+	monitoredProfileNotionProp, _ := radarrMedia.N.GetNotionMonitorProp(monitoredProfile, constant.MediaTypeMovie)
 	if LibraryData[0].HasFile {
-		radarrMedia.N.UpdateDownloadStatus("movie", notionPage.Pgid, false, "Downloaded", qualityProp, rootPathProp, monitoredProfileNotionProp)
+		radarrMedia.N.UpdateDownloadStatus(constant.MediaTypeMovie, notionPage.Pgid, false, constant.MediaStatusDownloaded, qualityProp, rootPathProp, monitoredProfileNotionProp)
 		return nil
 	}
 	//check for queue status
@@ -104,7 +104,7 @@ func (radarrMedia RadarrMedia) HandleExistingTitle(LibraryData []radarr.GetMovie
 		return errors.Join(errors.New("failed to get queue details in radarr"), err)
 	}
 	if queueStatus {
-		radarrMedia.N.UpdateDownloadStatus("movie", notionPage.Pgid, false, "Downloading", qualityProp, rootPathProp, monitoredProfileNotionProp)
+		radarrMedia.N.UpdateDownloadStatus(constant.MediaTypeMovie, notionPage.Pgid, false, constant.MediaStatusDownloading, qualityProp, rootPathProp, monitoredProfileNotionProp)
 		return nil
 	}
 	//trigger movie search in Radarr
@@ -112,7 +112,7 @@ func (radarrMedia RadarrMedia) HandleExistingTitle(LibraryData []radarr.GetMovie
 	if err != nil {
 		return errors.Join(errors.New("failed to trigger movie search command in radarr"), err)
 	}
-	radarrMedia.N.UpdateDownloadStatus("movie", notionPage.Pgid, false, "Queued", qualityProp, rootPathProp, monitoredProfileNotionProp)
+	radarrMedia.N.UpdateDownloadStatus(constant.MediaTypeMovie, notionPage.Pgid, false, constant.MediaStatusQueued, qualityProp, rootPathProp, monitoredProfileNotionProp)
 	return nil
 }
 
@@ -121,14 +121,14 @@ func (radarrMedia RadarrMedia) ProcessLibraryTitle(watchlistMovie notion.QueryDB
 	if err != nil {
 		return err
 	}
-	monitoredProfileNotionProp, _ := radarrMedia.N.GetNotionMonitorProp(monitoredProfile, "Movie")
+	monitoredProfileNotionProp, _ := radarrMedia.N.GetNotionMonitorProp(monitoredProfile, constant.MediaTypeMovie)
 	//get rootpath and qualityprofile properties for notion db
-	qualityProp, rootPathProp, err := radarrMedia.N.GetNotionQualityAndRootProps(radarrMovie.QualityProfileID, radarrMovie.RootFolderPath, "Movie")
+	qualityProp, rootPathProp, err := radarrMedia.N.GetNotionQualityAndRootProps(radarrMovie.QualityProfileID, radarrMovie.RootFolderPath, constant.MediaTypeMovie)
 	if err != nil {
 		return errors.Join(errors.New("failed to get quality and root path profile notion property"), err)
 	}
 	if radarrMovie.HasFile {
-		radarrMedia.N.UpdateDownloadStatus("movie", watchlistMovie.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp, monitoredProfileNotionProp)
+		radarrMedia.N.UpdateDownloadStatus(constant.MediaTypeMovie, watchlistMovie.Results[0].Pgid, false, constant.MediaStatusDownloaded, qualityProp, rootPathProp, monitoredProfileNotionProp)
 		return nil
 	}
 	//check for queue status
@@ -137,10 +137,10 @@ func (radarrMedia RadarrMedia) ProcessLibraryTitle(watchlistMovie notion.QueryDB
 		return errors.Join(errors.New("failed to get queue details in radarr"), err)
 	}
 	if queueStatus {
-		radarrMedia.N.UpdateDownloadStatus("movie", watchlistMovie.Results[0].Pgid, false, "Downloading", qualityProp, rootPathProp, monitoredProfileNotionProp)
+		radarrMedia.N.UpdateDownloadStatus(constant.MediaTypeMovie, watchlistMovie.Results[0].Pgid, false, constant.MediaStatusDownloading, qualityProp, rootPathProp, monitoredProfileNotionProp)
 		return nil
 	}
-	radarrMedia.N.UpdateDownloadStatus("movie", watchlistMovie.Results[0].Pgid, false, "Not Downloaded", qualityProp, rootPathProp, monitoredProfileNotionProp)
+	radarrMedia.N.UpdateDownloadStatus(constant.MediaTypeMovie, watchlistMovie.Results[0].Pgid, false, constant.MediaStatusNotDownloaded, qualityProp, rootPathProp, monitoredProfileNotionProp)
 	return nil
 }
 

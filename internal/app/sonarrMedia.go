@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 
+	"github.com/flxp49/notion-watchlistarr/internal/constant"
 	"github.com/flxp49/notion-watchlistarr/internal/notion"
 	"github.com/flxp49/notion-watchlistarr/internal/sonarr"
 	"github.com/flxp49/notion-watchlistarr/internal/util"
@@ -18,7 +19,7 @@ func NewSonarrMedia(N *notion.NotionClient, S *sonarr.SonarrClient) *SonarrMedia
 }
 
 func (sonarrMedia SonarrMedia) PollTitles() (notion.QueryDBResponse, error) {
-	results, err := sonarrMedia.N.QueryDB("TV Series")
+	results, err := sonarrMedia.N.QueryDB(constant.MediaTypeTV)
 	if err != nil {
 		return notion.QueryDBResponse{}, err
 	}
@@ -41,14 +42,14 @@ func (sonarrMedia SonarrMedia) QueryTitle(sonarrSeries sonarr.GetSeriesResponse)
 	return watchlistSeries, nil
 }
 func (sonarrMedia SonarrMedia) ProcessTitles(notionPage notion.Result) (sonarr.LookupSeriesResponse, []sonarr.GetSeriesResponse, error) {
-	seriesLookupInfo, err := sonarrMedia.S.LookupSeries("imdb", notionPage.Properties.Imdbid.Rich_text[0].Plain_text)
+	seriesLookupInfo, err := sonarrMedia.S.LookupSeries(constant.IMDB, notionPage.Properties.Imdbid.Rich_text[0].Plain_text)
 	if err != nil {
 		// use secondary search
 		fallbackTvdb, err := util.GetSeriesByRemoteID(notionPage.Properties.Imdbid.Rich_text[0].Plain_text)
 		if err != nil {
 			return sonarr.LookupSeriesResponse{}, nil, err
 		}
-		seriesLookupInfo, err = sonarrMedia.S.LookupSeries("tvdb", fallbackTvdb.Series.Seriesid)
+		seriesLookupInfo, err = sonarrMedia.S.LookupSeries(constant.TVDB, fallbackTvdb.Series.Seriesid)
 		if err != nil {
 			return sonarr.LookupSeriesResponse{}, nil, err
 		}
@@ -64,14 +65,14 @@ func (sonarrMedia SonarrMedia) ProcessTitles(notionPage notion.Result) (sonarr.L
 func (sonarrMedia SonarrMedia) AddTitle(LookupData sonarr.LookupSeriesResponse, notionPage notion.Result) error {
 	// set monitor property
 	if notionPage.Properties.MonitorProfile.Select.Name == "" {
-		monitorProfile, err := sonarrMedia.N.GetNotionMonitorProp(sonarrMedia.S.DefaultMonitorProfile, "TV Series")
+		monitorProfile, err := sonarrMedia.N.GetNotionMonitorProp(sonarrMedia.S.DefaultMonitorProfile, constant.MediaTypeTV)
 		if err != nil {
 			return errors.Join(errors.New("failed to get monitor profile notion property"), err)
 		}
 		notionPage.Properties.MonitorProfile.Select.Name = monitorProfile
 	}
 	//get rootpath and qualityprofile properties for notion db
-	qualityProp, rootPathProp, err := sonarrMedia.N.GetNotionQualityAndRootProps(sonarrMedia.S.DefaultQualityProfile, sonarrMedia.S.DefaultRootPath, "TV Series")
+	qualityProp, rootPathProp, err := sonarrMedia.N.GetNotionQualityAndRootProps(sonarrMedia.S.DefaultQualityProfile, sonarrMedia.S.DefaultRootPath, constant.MediaTypeTV)
 	if err != nil {
 		return errors.Join(errors.New("failed to get quality and root path profile notion property"), err)
 	}
@@ -85,18 +86,18 @@ func (sonarrMedia SonarrMedia) AddTitle(LookupData sonarr.LookupSeriesResponse, 
 	}
 	err = sonarrMedia.S.AddSeries(LookupData, sonarrMedia.N.Qpid[notionPage.Properties.QualityProfile.Select.Name], sonarrMedia.N.Rpid[notionPage.Properties.RootFolder.Select.Name], true, true, true, notion.MonitorProfiles[notionPage.Properties.MonitorProfile.Select.Name])
 	if err != nil {
-		return errors.Join(errors.New("failed to add movie to sonarr"), err)
+		return errors.Join(errors.New("failed to add series to sonarr"), err)
 	}
 	return nil
 }
 
 func (sonarrMedia SonarrMedia) HandleExistingTitle(LibraryData []sonarr.GetSeriesResponse, notionPage notion.Result) error {
-	qualityProp, rootPathProp, err := sonarrMedia.N.GetNotionQualityAndRootProps(LibraryData[0].QualityProfileID, LibraryData[0].RootFolderPath, "TV Series")
+	qualityProp, rootPathProp, err := sonarrMedia.N.GetNotionQualityAndRootProps(LibraryData[0].QualityProfileID, LibraryData[0].RootFolderPath, constant.MediaTypeTV)
 	if err != nil {
 		return err
 	}
 	if LibraryData[0].Statistics.PercentOfEpisodes == 100 {
-		sonarrMedia.N.UpdateDownloadStatus("series", notionPage.Pgid, false, "Downloaded", qualityProp, rootPathProp, "")
+		sonarrMedia.N.UpdateDownloadStatus(constant.MediaTypeTV, notionPage.Pgid, false, constant.MediaStatusDownloaded, qualityProp, rootPathProp, "")
 		return nil
 	}
 	//check for download queue
@@ -105,7 +106,7 @@ func (sonarrMedia SonarrMedia) HandleExistingTitle(LibraryData []sonarr.GetSerie
 		return errors.Join(errors.New("failed to get queue details in sonarr"), err)
 	}
 	if queueStatus {
-		sonarrMedia.N.UpdateDownloadStatus("series", notionPage.Pgid, false, "Downloading", qualityProp, rootPathProp, "")
+		sonarrMedia.N.UpdateDownloadStatus(constant.MediaTypeTV, notionPage.Pgid, false, constant.MediaStatusDownloading, qualityProp, rootPathProp, "")
 		return nil
 	}
 
@@ -114,18 +115,18 @@ func (sonarrMedia SonarrMedia) HandleExistingTitle(LibraryData []sonarr.GetSerie
 	if err != nil {
 		return errors.Join(errors.New("failed to trigger series search command in sonarr"), err)
 	}
-	sonarrMedia.N.UpdateDownloadStatus("series", notionPage.Pgid, false, "Queued", qualityProp, rootPathProp, "")
+	sonarrMedia.N.UpdateDownloadStatus(constant.MediaTypeTV, notionPage.Pgid, false, constant.MediaStatusQueued, qualityProp, rootPathProp, "")
 	return nil
 }
 
 func (sonarrMedia SonarrMedia) ProcessLibraryTitle(watchlistSeries notion.QueryDBIdResponse, sonarrSeries sonarr.GetSeriesResponse) error {
 	//get rootpath and qualityprofile properties for notion db
-	qualityProp, rootPathProp, err := sonarrMedia.N.GetNotionQualityAndRootProps(sonarrSeries.QualityProfileID, sonarrSeries.RootFolderPath, "TV Series")
+	qualityProp, rootPathProp, err := sonarrMedia.N.GetNotionQualityAndRootProps(sonarrSeries.QualityProfileID, sonarrSeries.RootFolderPath, constant.MediaTypeTV)
 	if err != nil {
 		return errors.Join(errors.New("failed to get quality and root path profile notion property"), err)
 	}
 	if sonarrSeries.Statistics.PercentOfEpisodes == 100 {
-		sonarrMedia.N.UpdateDownloadStatus("series", watchlistSeries.Results[0].Pgid, false, "Downloaded", qualityProp, rootPathProp, "")
+		sonarrMedia.N.UpdateDownloadStatus(constant.MediaTypeTV, watchlistSeries.Results[0].Pgid, false, constant.MediaStatusDownloaded, qualityProp, rootPathProp, "")
 		return nil
 	}
 	//check for queue status
@@ -134,10 +135,10 @@ func (sonarrMedia SonarrMedia) ProcessLibraryTitle(watchlistSeries notion.QueryD
 		return errors.Join(errors.New("failed to get queue details in radarr"), err)
 	}
 	if queueStatus {
-		sonarrMedia.N.UpdateDownloadStatus("series", watchlistSeries.Results[0].Pgid, false, "Downloading", qualityProp, rootPathProp, "")
+		sonarrMedia.N.UpdateDownloadStatus(constant.MediaTypeTV, watchlistSeries.Results[0].Pgid, false, constant.MediaStatusDownloading, qualityProp, rootPathProp, "")
 		return nil
 	}
-	sonarrMedia.N.UpdateDownloadStatus("series", watchlistSeries.Results[0].Pgid, false, "Not Downloaded", qualityProp, rootPathProp, "")
+	sonarrMedia.N.UpdateDownloadStatus(constant.MediaTypeTV, watchlistSeries.Results[0].Pgid, false, constant.MediaStatusNotDownloaded, qualityProp, rootPathProp, "")
 
 	return nil
 }

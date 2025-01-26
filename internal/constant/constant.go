@@ -28,4 +28,26 @@ const (
 	NotionOptionUnmonitorSpecials = "TV Series: Unmonitor Specials"
 	NotionOptionMovieOnly         = "Movie: Movie Only"
 	NotionOptionCollection        = "Movie: Collection"
+
+	MediaTypeMovie           = "Movie"
+	MediaTypeTV              = "TV Series"
+	MediaStatusDownloaded    = "Downloaded"
+	MediaStatusDownloading   = "Downloading"
+	MediaStatusNotDownloaded = "Not Downloaded"
+	MediaStatusQueued        = "Queued"
+	MediaStatusError         = "Error"
+
+	EventTypeTest            = "Test"
+	EventTypeMovieAdded      = "MovieAdded"
+	EventTypeMovieGrabbed    = "Grab"
+	EventTypeMovieDownloaded = "Download"
+	EventTypeMovieDelete     = "MovieDelete"
+	EventTypeMovieFileDelete = "MovieFileDelete"
+	EventTypeTVAdded         = "SeriesAdd"
+	EventTypeTVGrabbed       = "Grab"
+	EventTypeTVDownloaded    = "Download"
+	EventTypeTVDelete        = "SeriesDelete"
+
+	IMDB = "imdb"
+	TVDB = "tvdb"
 )
