@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -14,19 +13,21 @@ import (
 	"github.com/flxp49/notion-watchlistarr/internal/sonarr"
 	"github.com/flxp49/notion-watchlistarr/server"
 	"github.com/joho/godotenv"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func main() {
-	// init log file
-	f, err := os.OpenFile("notionwatchlistarrsync.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
+	logFile := &lumberjack.Logger{
+		Filename:   "notionwatchlistarrsync.log",
+		MaxSize:    1,    // Max size in MB
+		MaxBackups: 3,    // Max number of old log files to retain
+		MaxAge:     30,   // Max age in days to retain old log files
+		Compress:   true, // Compress old log files
 	}
-	defer f.Close()
 
 	var programLevel = new(slog.LevelVar)
-	Logger := slog.New(slog.NewTextHandler(f, &slog.HandlerOptions{Level: programLevel}))
-	err = godotenv.Load()
+	Logger := slog.New(slog.NewTextHandler(logFile, &slog.HandlerOptions{Level: programLevel}))
+	err := godotenv.Load()
 	if err != nil {
 		Logger.Error("Error loading .env file", "Error", err)
 		os.Exit(1)
