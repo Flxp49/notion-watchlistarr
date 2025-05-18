@@ -19,7 +19,7 @@ import (
 func main() {
 	logFile := &lumberjack.Logger{
 		Filename:   "notionwatchlistarrsync.log",
-		MaxSize:    1,    // Max size in MB
+		MaxSize:    10,   // Max size in MB
 		MaxBackups: 3,    // Max number of old log files to retain
 		MaxAge:     30,   // Max age in days to retain old log files
 		Compress:   true, // Compress old log files
