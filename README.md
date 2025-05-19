@@ -1,5 +1,6 @@
 # notion-watchlistarr
-Download media (via Radarr & Sonarr) directly from watchlist on Notion.
+Download media (via Radarr & Sonarr) directly from your watchlist in Notion.  
+P.S. Take a look at [Notion Watchlist](https://nwatchlist.notion.site/nwatchlist/Hello-there-00e5ce7685794744af0b6198d2147ae3) for managing your watchlist in Notion.
 
 # Prerequisites
 - [Notion Integration](https://developers.notion.com/docs/create-a-notion-integration#getting-started)
